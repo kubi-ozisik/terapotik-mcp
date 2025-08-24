@@ -1,0 +1,37 @@
+{
+  "name": "@terapotik/api",
+  "version": "0.1.0",
+  "description": "Terapotik API server with Google services integration and authentication",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "lint": "prettier --write"
+  },
+  "keywords": [
+    "api",
+    "google",
+    "calendar",
+    "tasks"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.1",
+    "express": "^5.1.0",
+    "express-async-handler": "^1.2.0",
+    "express-oauth2-jwt-bearer": "^1.6.1",
+    "googleapis": "^148.0.0",
+    "jwks-rsa": "^3.2.0",
+    "morgan": "^1.10.0",
+    "zod": "^3.24.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.23",
+    "@types/morgan": "^1.9.9"
+  }
+}

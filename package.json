@@ -1,0 +1,37 @@
+{
+  "name": "terapotik-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "description": "terapotik app with its mcp and api components",
+  "main": "index.js",
+"scripts": {
+  "dev": "concurrently \"npm run dev -w @terapotik/mcp-server\" \"npm run dev -w @terapotik/api\" \"npm run dev -w @terapotik/web\"",
+  "build": "npm run build -w @terapotik/shared && npm run build -w @terapotik/mcp-server && npm run build -w @terapotik/api && npm run build -w @terapotik/web"
+},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kubi-ozisik/terapotik-mcp.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/kubi-ozisik/terapotik-mcp/issues"
+  },
+  "homepage": "https://github.com/kubi-ozisik/terapotik-mcp#readme",
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.40.0",
+    "@typescript-eslint/parser": "^8.40.0",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.34.0",
+    "nodemon": "^3.1.10",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.4",
+    "typescript": "^5.9.2"
+  }
+}
