@@ -1,20 +1,18 @@
 {
   "name": "terapotik-mcp",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+
   "description": "terapotik app with its mcp and api components",
   "main": "index.js",
-"scripts": {
-  "dev": "concurrently \"npm run dev -w @terapotik/mcp-server\" \"npm run dev -w @terapotik/api\" \"npm run dev -w @terapotik/web\"",
-  "dev:web": "npm run dev -w @terapotik/web",
-  "build": "npm run build -w @terapotik/shared && npm run build -w @terapotik/mcp-server && npm run build -w @terapotik/api && npm run build -w @terapotik/web",
-  "db:generate": "npm run db:generate -w @terapotik/shared",
-  "db:migrate": "npm run db:migrate -w @terapotik/shared",
-  "db:studio": "npm run db:studio -w @terapotik/shared"
-},
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter @terapotik/mcp-server dev\" \"pnpm --filter @terapotik/api dev\" \"pnpm --filter @terapotik/web dev\"",
+    "dev:web": "pnpm --filter @terapotik/web dev",
+    "build": "pnpm --filter @terapotik/shared build && pnpm --filter @terapotik/mcp-server build && pnpm --filter @terapotik/api build && pnpm --filter @terapotik/web build",
+    "db:generate": "pnpm --filter @terapotik/shared db:generate",
+    "db:migrate": "pnpm --filter @terapotik/shared db:migrate",
+    "db:studio": "pnpm --filter @terapotik/shared db:studio"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kubi-ozisik/terapotik-mcp.git"

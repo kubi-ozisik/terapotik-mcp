@@ -48,10 +48,10 @@ A production-ready **Model Context Protocol (MCP)** implementation featuring mul
 
 ### **Package Structure**
 
+- **`packages/shared`** - Shared types, utilities, database schema, and Prisma client
+- **`packages/api`** - Express.js API server with Google services and authentication  
+- **`packages/web`** - Next.js client with modern UI (Next.js 15, React 19, Tailwind 4)
 - **`packages/mcp-server`** - Multi-transport MCP server with unified tool registry
-- **`packages/api`** - Express.js API server with Google services and authentication
-- **`packages/web`** - Next.js client with agentic chat interface *(coming soon)*
-- **`packages/shared`** - Shared types, utilities, and configurations *(coming soon)*
 
 ---
 
@@ -59,7 +59,8 @@ A production-ready **Model Context Protocol (MCP)** implementation featuring mul
 
 ### **Prerequisites**
 - **Node.js** 20.x or higher
-- **npm** 7.x or higher (for workspaces)
+- **pnpm** 8.x or higher (recommended package manager)
+- **MongoDB** database connection
 - **Claude Desktop** (optional, for AI assistant integration)
 
 ### **Installation**
@@ -69,11 +70,14 @@ A production-ready **Model Context Protocol (MCP)** implementation featuring mul
 git clone https://github.com/kubi-ozisik/terapotik-mcp.git
 cd terapotik-mcp
 
+# Install pnpm globally if not installed
+npm install -g pnpm
+
 # Install all dependencies
-npm install
+pnpm install
 
 # Set up environment variables
-cp packages/mcp-server/.env.example packages/mcp-server/.env
+cp packages/shared/.env.example packages/shared/.env
 cp packages/api/.env.example packages/api/.env
 # Edit .env files with your configuration
 ```
@@ -82,17 +86,20 @@ cp packages/api/.env.example packages/api/.env
 
 ```bash
 # Start all services in development mode
-npm run dev
+pnpm dev
 
 # Or start individual services
-npm run dev -w @terapotik/api          # API server (port 3200)
-npm run dev -w @terapotik/mcp-server   # MCP server (ports 3001/3002)
+pnpm dev --filter @terapotik/api          # API server
+pnpm dev --filter @terapotik/mcp-server   # MCP server
+pnpm dev --filter @terapotik/web          # Web interface
 
 # Build all packages
-npm run build
+pnpm build
 
-# Production start
-npm run start
+# Database operations
+pnpm db:generate  # Generate Prisma client
+pnpm db:migrate   # Run database migrations
+pnpm db:studio    # Open Prisma Studio
 ```
 
 ---
@@ -230,8 +237,8 @@ terapotik-mcp/
 │   │   │   └── utils/                 # Utilities and helpers
 │   │   └── package.json
 │   │
-│   ├── web/                           # Next.js client (planned)
-│   └── shared/                        # Shared utilities (planned)
+│   ├── web/                           # Next.js client with modern UI
+│   └── shared/                        # Shared utilities and database
 │
 ├── package.json                       # Root workspace configuration
 ├── tsconfig.json                      # Base TypeScript configuration
@@ -267,13 +274,13 @@ This project is actively developed and welcomes contributions!
 ```bash
 git clone https://github.com/kubi-ozisik/terapotik-mcp.git
 cd terapotik-mcp
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 ### **Before Contributing**
-- Run tests: `npm test`
-- Check linting: `npm run lint`
+- Run tests: `pnpm test`
+- Check linting: `pnpm lint`
 - Verify MCP compliance: Test with MCP Inspector
 
 ---

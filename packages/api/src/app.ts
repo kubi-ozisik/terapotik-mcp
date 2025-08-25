@@ -23,7 +23,7 @@ dotenv.config();
 connectDatabase();
 
 // Initialize express app
-const app = express();
+const app: express.Express = express();
 
 // Middleware, temporary
 app.use(
