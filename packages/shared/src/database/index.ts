@@ -1,4 +1,4 @@
-import { PrismaClient } from '../generated/prisma';
+import { PrismaClient } from '@prisma/client';
 
 // Global instance to prevent multiple connections
 declare global {
@@ -35,5 +35,5 @@ export type {
   Session, 
   VerificationToken, 
   ServiceToken 
-} from '../generated/prisma';
-export { Prisma } from '../generated/prisma';
+} from '@prisma/client';
+export { Prisma } from '@prisma/client';
