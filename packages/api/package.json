@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "lint": "prettier --write"
+    "lint": "prettier --write",
+    "type-check": "tsc --noEmit"
   },
   "keywords": [
     "api",
@@ -19,6 +20,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@terapotik/shared": "workspace:*",
     "cors": "^2.8.5",
     "dotenv": "^16.4.1",
     "express": "^5.1.0",

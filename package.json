@@ -9,7 +9,11 @@
   "main": "index.js",
 "scripts": {
   "dev": "concurrently \"npm run dev -w @terapotik/mcp-server\" \"npm run dev -w @terapotik/api\" \"npm run dev -w @terapotik/web\"",
-  "build": "npm run build -w @terapotik/shared && npm run build -w @terapotik/mcp-server && npm run build -w @terapotik/api && npm run build -w @terapotik/web"
+  "dev:web": "npm run dev -w @terapotik/web",
+  "build": "npm run build -w @terapotik/shared && npm run build -w @terapotik/mcp-server && npm run build -w @terapotik/api && npm run build -w @terapotik/web",
+  "db:generate": "npm run db:generate -w @terapotik/shared",
+  "db:migrate": "npm run db:migrate -w @terapotik/shared",
+  "db:studio": "npm run db:studio -w @terapotik/shared"
 },
   "repository": {
     "type": "git",

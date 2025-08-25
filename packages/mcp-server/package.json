@@ -15,6 +15,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@terapotik/shared": "*",
     "@modelcontextprotocol/sdk": "^1.17.4",
     "cors": "^2.8.5",
     "express": "^5.1.0",
