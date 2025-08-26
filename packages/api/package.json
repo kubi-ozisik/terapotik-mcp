@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "lint": "prettier --write"
+    "lint": "prettier --write",
+    "type-check": "tsc --noEmit"
   },
   "keywords": [
     "api",
@@ -19,11 +20,16 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@terapotik/shared": "workspace:*",
     "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
     "dotenv": "^16.4.1",
     "express": "^5.1.0",
     "express-async-handler": "^1.2.0",
+    "express-jwt": "^8.5.1",
+    "express-jwt-authz": "^2.4.1",
     "express-oauth2-jwt-bearer": "^1.6.1",
+    "google-auth-library": "^10.2.1",
     "googleapis": "^148.0.0",
     "jwks-rsa": "^3.2.0",
     "morgan": "^1.10.0",

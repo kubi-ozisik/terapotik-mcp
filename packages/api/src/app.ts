@@ -5,16 +5,30 @@ import cors from "cors";
 import morgan from "morgan";
 import dotenv from "dotenv";
 
+import { 
+    APP_NAME, 
+    API_VERSION, 
+    MCP_VERSION, 
+    connectDatabase,
+    createSuccessResponse,
+} from "@terapotik/shared";
+import googleCalendarRoutes from "./routes/google-calendar-routes";
+import { checkJwt, handleAuthErrors } from "./middlewares/jwt";
+import googleTasksRoutes from "./routes/google-tasks-routes";
+
 // Load environment variables
 dotenv.config();
 
+// Connect to database
+connectDatabase();
+
 // Initialize express app
-const app = express();
+const app: express.Express = express();
 
 // Middleware, temporary
 app.use(
     cors({
-        origin: process.env.NODE_ENV !== "prod" ? "*" : process.env.ALLOWED_ORIGINS?.split(","), // Allow all origins
+        origin: process.env.NODE_ENV !== "production" ? "*" : process.env.ALLOWED_ORIGINS?.split(","), // Allow all origins
         credentials: true,
     })
 );
@@ -22,7 +36,7 @@ app.use(
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
+app.use(handleAuthErrors);
 const VERSION = "v1";
 
 // Health check endpoint
@@ -32,6 +46,9 @@ app.get(`/api/${VERSION}/health`, (req, res) => {
         data: {
             status: "ok",
             timestamp: new Date().toISOString(),
+            app: APP_NAME,
+            version: API_VERSION,
+            mcp: MCP_VERSION,
         },
     });
 });
@@ -45,17 +62,16 @@ app.get(`/api/${VERSION}/me`, async (req, res) => {
     //     ...auth,
     //   },
     // });
-
-    res.json({
-        status: "success",
-        data: {
-            name: "John Doe",
-            email: "john.doe@example.com",
-            role: "admin",
-        },
-    });
+    const userData = {
+        name: "John Doe",
+        email: "john.doe@example.com",
+        role: "admin",
+    };
+    res.json(createSuccessResponse(userData));
 });
 
+app.use("/api/calendar", checkJwt, handleAuthErrors, googleCalendarRoutes);
+app.use("/api/tasks", checkJwt, handleAuthErrors, googleTasksRoutes);
 // Global error handler
 app.use(
     (
