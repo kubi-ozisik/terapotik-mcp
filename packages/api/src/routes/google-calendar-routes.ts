@@ -1,86 +1,15 @@
-import { prisma } from "@terapotik/shared";
+// 
 import express, { Request, Response, Router } from "express";
+import { AuthenticatedRequest, getGoogleTokenForUser, getGoogleTokenForUserWithRefresh } from "../services/data-service";
 import { GoogleCalendarService } from "../services/google-calendar-service";
-import { CalendarEvent, CalendarEventsRequest, GoogleAuthToken } from "@terapotik/shared/types";
-import { createAuthenticatedClient } from "../utils/google-auth";
-// import { createAuthenticatedClient } from "@terapotik/shared/utils";
+import { CalendarEvent, CalendarEventsRequest } from "@terapotik/shared/types";
+import { createAuthenticatedClient, createAuthenticatedClientWithRefresh } from "../utils/google-auth";
+import { CreateCalendarEventRequestSchema, CreateCalendarEventSchema } from "@terapotik/shared";
+import { z } from "zod";
 
 const router = express.Router() as Router;
 
-// Apply JWT authentication middleware to all routes
-// Note: JWT check is already applied in app.ts, so this is redundant
-// router.use(checkJwt);
 
-/**
- * Helper function to get Google tokens for a user from the ServiceToken collection
- */
-async function getGoogleTokenForUser(req: Request): Promise<GoogleAuthToken> {
-  // Get the Auth0 user ID from the JWT token
-  const auth = (req as any).auth;
-
-  if (!auth || !auth.sub) {
-    throw new Error("No authenticated user found in request");
-  }
-
-  console.log("Looking for user with Auth0 ID:", auth.sub);
-
-  // Try to find the user by Auth0 ID
-  let user = await prisma.user.findFirst({
-    where: { authId: auth.sub },
-  });
-
-  // If not found, try to find via Account.providerAccountId
-  if (!user) {
-    console.log("User not found by authId, trying to find via Account...");
-
-    const account = await prisma.account.findFirst({
-      where: {
-        providerAccountId: auth.sub,
-      },
-      include: {
-        user: true,
-      },
-    });
-
-    if (account?.user) {
-      user = account.user;
-      console.log("Found user via Account:", user.id);
-
-      // Update the user's authId for future lookups
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { authId: auth.sub },
-      });
-      console.log("Updated user authId to:", auth.sub);
-    }
-  }
-
-  if (!user) {
-    throw new Error(`User not found with Auth0 ID: ${auth.sub}`);
-  }
-
-  console.log("Found user:", user.id);
-
-  // Find the user's Google service token
-  const serviceToken = await prisma.serviceToken.findFirst({
-    where: {
-      userId: user.id,
-      service: "google",
-    },
-  });
-
-  if (!serviceToken || !serviceToken.accessToken) {
-    throw new Error("No Google service token found for this user");
-  }
-
-  return {
-    access_token: serviceToken.accessToken,
-    refresh_token: serviceToken.refreshToken || undefined,
-    scope: serviceToken.scope || "",
-    token_type: "Bearer",
-    expiry_date: serviceToken.expiresAt ? serviceToken.expiresAt.getTime() : 0,
-  };
-}
 
 /**
  * GET /api/calendar/events
@@ -89,16 +18,17 @@ async function getGoogleTokenForUser(req: Request): Promise<GoogleAuthToken> {
 router.get("/events", async (req: Request, res: Response) => {
   try {
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req);
+    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
 
     // Create authenticated client
     const authClient = createAuthenticatedClient(tokens);
+    // const authClientWithRefresh = await createAuthenticatedClientWithRefresh(tokens, (req.auth as AuthenticatedRequest).payload.sub);
     const calendarService = new GoogleCalendarService(authClient);
 
     // Parse query parameters
     const calendarEventsRequest: CalendarEventsRequest = {
       calendarId: (req.query.calendarId as string) || "primary",
-      timeMin: (req.query.timeMin as string) || new Date().toISOString(),
+      timeMin: (req.query.timeMin as string),
       timeMax: req.query.timeMax as string,
       maxResults: req.query.maxResults
         ? parseInt(req.query.maxResults as string)
@@ -129,25 +59,43 @@ router.get("/events", async (req: Request, res: Response) => {
  */
 router.post("/events", async (req: Request, res: Response) => {
   try {
+    // validate the request body
+    const validatedData = CreateCalendarEventRequestSchema.parse(req.body);
+
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req);
+    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
 
     // Create authenticated client
     const authClient = createAuthenticatedClient(tokens);
     const calendarService = new GoogleCalendarService(authClient);
 
     // Get calendarId and event from request body
-    const { calendarId = "primary", event } = req.body;
+    const { calendarId = "primary", event } = validatedData;
 
     // Create event
     const createdEvent = await calendarService.createEvent(calendarId, event);
-    res.status(201).json({
+    return res.status(201).json({
       status: "success",
       data: createdEvent,
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid request body",
+        errors: error.errors,
+      });
+    }
+    // token expired
+    if (error instanceof Error && error.message.includes('invalid_client')) {
+      return res.status(401).json({
+        status: "error",
+        message: "Google Calendar access expired. Please login to Terapotik web app to integrate your Google Calendar again.",
+        code: "GOOGLE_AUTH_EXPIRED"
+      });
+    }
     console.error("Error creating calendar event:", error);
-    res.status(500).json({
+    return res.status(500).json({
       status: "error",
       message: "Failed to create calendar event",
       error: (error as Error).message,
@@ -155,81 +103,81 @@ router.post("/events", async (req: Request, res: Response) => {
   }
 });
 
-/**
- * PUT /api/calendar/events/:eventId
- * Update an existing calendar event
- */
-router.put("/events/:eventId", async (req: Request, res: Response) => {
-  try {
-    // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req);
+// /**
+//  * PUT /api/calendar/events/:eventId
+//  * Update an existing calendar event
+//  */
+// router.put("/events/:eventId", async (req: Request, res: Response) => {
+//   try {
+//     // Get the user's Google tokens from ServiceToken collection
+//     const tokens = await getGoogleTokenForUser(req);
 
-    // Create authenticated client
-    const authClient = createAuthenticatedClient(tokens);
-    const calendarService = new GoogleCalendarService(authClient);
+//     // Create authenticated client
+//     const authClient = createAuthenticatedClient(tokens);
+//     const calendarService = new GoogleCalendarService(authClient);
 
-    // Get calendarId, eventId and event data from request
-    const { calendarId = "primary" } = req.body;
-    const eventId = req.params.eventId;
-    const event: CalendarEvent = req.body.event;
+//     // Get calendarId, eventId and event data from request
+//     const { calendarId = "primary" } = req.body;
+//     const eventId = req.params.eventId;
+//     const event: CalendarEvent = req.body.event;
 
-    // Ensure event ID is included in the update request
-    if (event && !event.id) {
-      event.id = eventId;
-    }
+//     // Ensure event ID is included in the update request
+//     if (event && !event.id) {
+//       event.id = eventId;
+//     }
 
-    // Update event
-    const updatedEvent = await calendarService.updateEvent(
-      calendarId,
-      eventId,
-      event
-    );
-    res.json({
-      status: "success",
-      data: updatedEvent,
-    });
-  } catch (error) {
-    console.error("Error updating calendar event:", error);
-    res.status(500).json({
-      status: "error",
-      message: "Failed to update calendar event",
-      error: (error as Error).message,
-    });
-  }
-});
+//     // Update event
+//     const updatedEvent = await calendarService.updateEvent(
+//       calendarId,
+//       eventId,
+//       event
+//     );
+//     res.json({
+//       status: "success",
+//       data: updatedEvent,
+//     });
+//   } catch (error) {
+//     console.error("Error updating calendar event:", error);
+//     res.status(500).json({
+//       status: "error",
+//       message: "Failed to update calendar event",
+//       error: (error as Error).message,
+//     });
+//   }
+// });
 
-/**
- * DELETE /api/calendar/events/:eventId
- * Delete a calendar event
- */
-router.delete("/events/:eventId", async (req: Request, res: Response) => {
-  try {
-    // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req);
+// /**
+//  * DELETE /api/calendar/events/:eventId
+//  * Delete a calendar event
+//  */
+// router.delete("/events/:eventId", async (req: Request, res: Response) => {
+//   try {
+//     // Get the user's Google tokens from ServiceToken collection
+//     const tokens = await getGoogleTokenForUser(req);
 
-    // Create authenticated client
-    const authClient = createAuthenticatedClient(tokens);
-    const calendarService = new GoogleCalendarService(authClient);
+//     // Create authenticated client
+//     const authClient = createAuthenticatedClient(tokens);
+//     const calendarService = new GoogleCalendarService(authClient);
 
-    // Get calendarId and eventId from request
-    const calendarId = (req.query.calendarId as string) || "primary";
-    const eventId = req.params.eventId;
+//     // Get calendarId and eventId from request
+//     const calendarId = (req.query.calendarId as string) || "primary";
+//     const eventId = req.params.eventId;
 
-    // Delete event - URL encoding is handled in the service
-    await calendarService.deleteEvent(calendarId, eventId);
-    res.status(200).json({
-      status: "success",
-      message: "Calendar event deleted successfully",
-    });
-  } catch (error) {
-    console.error("Error deleting calendar event:", error);
-    res.status(500).json({
-      status: "error",
-      message: "Failed to delete calendar event",
-      error: (error as Error).message,
-    });
-  }
-});
+//     // Delete event - URL encoding is handled in the service
+//     await calendarService.deleteEvent(calendarId, eventId);
+//     res.status(200).json({
+//       status: "success",
+//       message: "Calendar event deleted successfully",
+//     });
+//   } catch (error) {
+//     console.error("Error deleting calendar event:", error);
+//     res.status(500).json({
+//       status: "error",
+//       message: "Failed to delete calendar event",
+//       error: (error as Error).message,
+//     });
+//   }
+// });
 
 /**
  * GET /api/calendar/list
@@ -238,7 +186,7 @@ router.delete("/events/:eventId", async (req: Request, res: Response) => {
 router.get("/list", async (req: Request, res: Response) => {
   try {
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req);
+    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
 
     // Create authenticated client
     const authClient = createAuthenticatedClient(tokens);
@@ -267,7 +215,7 @@ router.get("/list", async (req: Request, res: Response) => {
 router.get("/events/date/:date", async (req: Request, res: Response) => {
   try {
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req);
+    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
 
     // Create authenticated client
     const authClient = createAuthenticatedClient(tokens);
@@ -324,7 +272,7 @@ router.get("/events/date/:date", async (req: Request, res: Response) => {
 router.get("/events/range", async (req: Request, res: Response) => {
   try {
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req);
+    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
 
     // Create authenticated client
     const authClient = createAuthenticatedClient(tokens);
@@ -396,7 +344,7 @@ router.get("/events/range", async (req: Request, res: Response) => {
 router.post("/events/recurring", async (req: Request, res: Response) => {
   try {
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req);
+    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
 
     // Create authenticated client
     const authClient = createAuthenticatedClient(tokens);

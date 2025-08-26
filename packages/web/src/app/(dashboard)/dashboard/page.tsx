@@ -41,6 +41,8 @@ export default function DashboardPage() {
         return
       }
 
+      console.log("session", (session as any).accessToken)
+
       try {
         setIsLoading(true)
 

@@ -12,17 +12,15 @@ import {
 // Import the schemas from tasks.schema.ts
 import {
   CreateTaskListRequestSchema,
-  CreateTaskRequestSchema,
+  CreateTaskParamsSchema,
   QueryParamsSchema,
-  UpdateTaskRequestSchema,
+  UpdateTaskParamsSchema,
 } from "@terapotik/shared";
 import { createAuthenticatedClient } from "../utils/google-auth";
+import { AuthenticatedRequest } from "../services/data-service";
 
 const router = express.Router() as Router;
 
-// Apply JWT authentication middleware to all routes
-// Note: JWT check is already applied in app.ts, so this is redundant
-// router.use(checkJwt);
 
 /**
  * Helper function to extract Google API error details
@@ -47,24 +45,24 @@ function extractGoogleApiError(error: any): string {
 /**
  * Helper function to get Google tokens for a user from the ServiceToken collection
  */
-async function getGoogleTokenForUser(req: Request): Promise<GoogleAuthToken> {
+async function getGoogleTokenForUser(req: AuthenticatedRequest): Promise<GoogleAuthToken> {
   // Get the Auth0 user ID from the JWT token
-  const auth = (req as any).auth;
+  const auth = req.auth;
 
-  if (!auth || !auth.sub) {
+  if (!auth || !auth.payload || !auth.payload.sub) {
     throw new Error("No authenticated user found in request");
   }
 
   // Try to find the user by Auth0 ID
   let user = await prisma.user.findFirst({
-    where: { authId: auth.sub },
+    where: { authId: auth.payload.sub },
   });
 
   // If not found, try to find via Account.providerAccountId
   if (!user) {
     const account = await prisma.account.findFirst({
       where: {
-        providerAccountId: auth.sub,
+        providerAccountId: auth.payload.sub,
       },
       include: {
         user: true,
@@ -77,13 +75,13 @@ async function getGoogleTokenForUser(req: Request): Promise<GoogleAuthToken> {
       // Update the user's authId for future lookups
       await prisma.user.update({
         where: { id: user.id },
-        data: { authId: auth.sub },
+        data: { authId: auth.payload.sub },
       });
     }
   }
 
   if (!user) {
-    throw new Error(`User not found with Auth0 ID: ${auth.sub}`);
+    throw new Error(`User not found with Auth0 ID: ${auth.payload.sub}`);
   }
 
   // Find the user's Google service token
@@ -118,7 +116,7 @@ async function getGoogleTokenForUser(req: Request): Promise<GoogleAuthToken> {
 router.get("/lists", async (req: Request, res: Response) => {
   try {
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req);
+    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
 
     // Validate tokens have required scope
     if (!tokens.scope.includes("https://www.googleapis.com/auth/tasks")) {
@@ -167,7 +165,7 @@ router.get("/all", async (req: Request, res: Response) => {
     }
 
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req);
+    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
 
     // Validate tokens have required scope
     if (!tokens.scope.includes("https://www.googleapis.com/auth/tasks")) {
@@ -238,7 +236,7 @@ router.get("/:tasklist/tasks", async (req: Request, res: Response) => {
     }
 
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req);
+    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
 
     // Validate tokens have required scope
     if (!tokens.scope.includes("https://www.googleapis.com/auth/tasks")) {
@@ -303,7 +301,7 @@ router.post("/:tasklist/tasks", async (req: Request, res: Response) => {
     }
 
     // Validate request body
-    const bodyValidation = CreateTaskRequestSchema.safeParse(req.body);
+    const bodyValidation = CreateTaskParamsSchema.safeParse(req.body);
     if (!bodyValidation.success) {
       return res.status(400).json({
         status: "error",
@@ -313,7 +311,7 @@ router.post("/:tasklist/tasks", async (req: Request, res: Response) => {
     }
 
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req);
+    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
 
     // Validate tokens have required scope
     if (!tokens.scope.includes("https://www.googleapis.com/auth/tasks")) {
@@ -384,7 +382,7 @@ router.put("/:tasklist/tasks/:taskId", async (req: Request, res: Response) => {
     }
 
     // Validate request body
-    const bodyValidation = UpdateTaskRequestSchema.safeParse(req.body);
+    const bodyValidation = UpdateTaskParamsSchema.safeParse(req.body);
     if (!bodyValidation.success) {
       console.log("Task update failed: Invalid request body", {
         validationError: bodyValidation.error.message,
@@ -398,7 +396,7 @@ router.put("/:tasklist/tasks/:taskId", async (req: Request, res: Response) => {
     }
 
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req);
+    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
 
     // Validate tokens have required scope
     if (!tokens.scope.includes("https://www.googleapis.com/auth/tasks")) {
@@ -480,7 +478,7 @@ router.delete(
       }
 
       // Get the user's Google tokens from ServiceToken collection
-      const tokens = await getGoogleTokenForUser(req);
+      const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
 
       // Validate tokens have required scope
       if (!tokens.scope.includes("https://www.googleapis.com/auth/tasks")) {
@@ -538,7 +536,7 @@ router.post("/lists", async (req: Request, res: Response) => {
     }
 
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req);
+    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
 
     // Validate tokens have required scope
     if (!tokens.scope.includes("https://www.googleapis.com/auth/tasks")) {

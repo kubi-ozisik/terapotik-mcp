@@ -1,0 +1,48 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug API Server (TypeScript)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/packages/api/src/server.ts",
+      "runtimeArgs": ["-r", "tsx/cjs"],
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "envFile": "${workspaceFolder}/packages/api/.env",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+      "cwd": "${workspaceFolder}/packages/api"
+    },
+    {
+      "name": "Debug API Server (Compiled JS)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/packages/api/dist/server.js",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "envFile": "${workspaceFolder}/packages/api/.env",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+      "cwd": "${workspaceFolder}/packages/api",
+      "preLaunchTask": "build-api"
+    }
+  ],
+  "tasks": [
+    {
+      "label": "build-api",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["build", "--filter", "@terapotik/api"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared"
+      }
+    }
+  ]
+}

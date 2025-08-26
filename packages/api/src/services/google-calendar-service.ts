@@ -8,6 +8,9 @@ import {
   RecurrenceRule,
 } from "@terapotik/shared/types";
 import { GoogleAuthClientWithToken } from "@terapotik/shared/types";
+import { subDays, addDays, startOfDay, endOfDay } from 'date-fns';
+import { CreateCalendarEventInput } from "@terapotik/shared";
+
 
 export class GoogleCalendarService {
   private calendar: calendar_v3.Calendar;
@@ -33,11 +36,16 @@ export class GoogleCalendarService {
       // Do not URL encode 'primary' or email addresses for Google Calendar API
       const calendarIdParam = calendarId === "primary" ? "primary" : calendarId;
 
+      // default timeMin: yesterday at start of day
+      const timeMin = request.timeMin || startOfDay(subDays(new Date(), 1)).toISOString();
+      // Default timeMax: 5 days from now at end of day  
+      const timeMax = request.timeMax || endOfDay(addDays(new Date(), 5)).toISOString();
+
       const response = await this.calendar.events.list({
         calendarId: calendarIdParam,
-        timeMin: request.timeMin || new Date().toISOString(),
-        timeMax: request.timeMax,
-        maxResults: request.maxResults || 10,
+        timeMin: timeMin,
+        timeMax: timeMax,
+        maxResults: request.maxResults || 50,
         singleEvents: request.singleEvents || true,
         orderBy: request.orderBy || "startTime",
       });
@@ -116,7 +124,7 @@ export class GoogleCalendarService {
    */
   async createEvent(
     calendarId: string = "primary",
-    eventData: CalendarEvent
+    eventData: CreateCalendarEventInput
   ): Promise<CalendarEvent> {
     try {
       // Do not URL encode 'primary' or email addresses for Google Calendar API
@@ -130,7 +138,7 @@ export class GoogleCalendarService {
         location: eventData.location,
         start: eventData.start,
         end: eventData.end,
-        status: eventData.status,
+        // status: eventData.status,
         colorId: eventData.colorId,
       };
 

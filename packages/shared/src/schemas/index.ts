@@ -38,3 +38,4 @@ export type UpdateServiceToken = z.infer<typeof UpdateServiceTokenSchema>;
 export type ApiResponse<T = any> = z.infer<typeof ApiResponseSchema> & { data?: T };
 
 export * from './tasks.schema';
+export * from './google-calendar.schema';

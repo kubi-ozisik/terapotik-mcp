@@ -49,16 +49,49 @@ export const TaskListSchema = z.object({
 /**
  * Schema for Create Task Request
  */
-export const CreateTaskRequestSchema = z.object({
-  task: TaskSchema,
+export const CreateTaskParamsSchema = z.object({
+  // taskListId: z.string(),
+  task: z.object({
+    title: z.string(),
+    notes: z.string().nullable().optional(),
+    status: z.enum(["needsAction", "completed"]).optional(),
+    due: z.string().nullable().optional(),
+    parent: z.string().nullable().optional(),
+    links: z
+      .array(
+        z.object({
+          type: z.string().optional(),
+          description: z.string().optional(),
+          link: z.string().optional(),
+        })
+      )
+      .nullable()
+      .optional(),
+  }),
 });
 
 /**
  * Schema for Update Task Request
  */
-export const UpdateTaskRequestSchema = z.object({
-  task: TaskSchema.extend({
-    id: z.string().optional(),
+export const UpdateTaskParamsSchema = z.object({
+  taskListId: z.string(),
+  taskId: z.string(),
+  task: z.object({
+    title: z.string().optional(),
+    notes: z.string().nullable().optional(),
+    status: z.enum(["needsAction", "completed"]).optional(),
+    due: z.string().nullable().optional(),
+    parent: z.string().nullable().optional(),
+    links: z
+      .array(
+        z.object({
+          type: z.string().optional(),
+          description: z.string().optional(),
+          link: z.string().optional(),
+        })
+      )
+      .nullable()
+      .optional(),
   }),
 });
 
@@ -135,3 +168,9 @@ export const DeleteTaskParamsSchema = z.object({
 export const CreateTaskListRequestSchema = z.object({
   title: z.string().min(1, "Title is required"),
 });
+
+export type TasksListParams = z.infer<typeof TasksListParamsSchema>;
+export type CreateTaskParams = z.infer<typeof CreateTaskParamsSchema>;
+export type UpdateTaskParams = z.infer<typeof UpdateTaskParamsSchema>;
+export type DeleteTaskParams = z.infer<typeof DeleteTaskParamsSchema>;
+export type AllTasksResponse = z.infer<typeof AllTasksResponseSchema>;

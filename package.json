@@ -2,7 +2,6 @@
   "name": "terapotik-mcp",
   "version": "0.1.0",
   "private": true,
-
   "description": "terapotik app with its mcp and api components",
   "main": "index.js",
   "scripts": {
@@ -33,7 +32,10 @@
     "eslint": "^9.34.0",
     "nodemon": "^3.1.10",
     "prettier": "^3.6.2",
-    "tsx": "^4.20.4",
+    "tsx": "^4.20.5",
     "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "zod-to-json-schema": "^3.24.6"
   }
 }

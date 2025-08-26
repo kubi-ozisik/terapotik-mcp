@@ -8,13 +8,13 @@ import dotenv from "dotenv";
 import { 
     APP_NAME, 
     API_VERSION, 
-    API_BASE_URL, 
     MCP_VERSION, 
     connectDatabase,
-    prisma,
     createSuccessResponse,
-    createErrorResponse 
 } from "@terapotik/shared";
+import googleCalendarRoutes from "./routes/google-calendar-routes";
+import { checkJwt, handleAuthErrors } from "./middlewares/jwt";
+import googleTasksRoutes from "./routes/google-tasks-routes";
 
 // Load environment variables
 dotenv.config();
@@ -36,7 +36,7 @@ app.use(
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
+app.use(handleAuthErrors);
 const VERSION = "v1";
 
 // Health check endpoint
@@ -70,6 +70,8 @@ app.get(`/api/${VERSION}/me`, async (req, res) => {
     res.json(createSuccessResponse(userData));
 });
 
+app.use("/api/calendar", checkJwt, handleAuthErrors, googleCalendarRoutes);
+app.use("/api/tasks", checkJwt, handleAuthErrors, googleTasksRoutes);
 // Global error handler
 app.use(
     (

@@ -1,10 +1,60 @@
 import { Request, Response } from "express";
-
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { McpToolHandler } from "../types/mcp";
+import {
+    createGetCalendarListHandler,
+    createGetEventsForDateHandler,
+    createGetEventsForDateRangeHandler,
+    getCalendarEventsInputSchema,
+    getCalendarEventsToolInfo,
+    getCalendarListInputSchema,
+    getCalendarListToolInfo,
+    getEventsForDateInputSchema,
+    getEventsForDateRangeInputSchema,
+    getEventsForDateRangeToolInfo,
+    getEventsForDateToolInfo
+} from "../tools/calendar/get-calendar-events";
+import {
+    createGetCalendarEventsHandler,
+    createGetEventsForTodayHandler,
+    getEventsForTodayInputSchema, getEventsForTodayToolInfo
+} from "../tools/calendar";
+import {
+    createCalendarEventInputSchema,
+    createCalendarEventToolInfo,
+    createCreateCalendarEventHandler,
+    createCreateRecurringEventHandler,
+    createRecurringEventInputSchema,
+    createRecurringEventToolInfo
+} from "../tools/calendar/create-calendar-event";
+import {
+    createGetTaskListsHandler,
+    createGetTasksForListHandler,
+    createGetTasksHandler,
+    createTaskListInputSchema,
+    getTaskListsInputSchema,
+    getTaskListsToolInfo,
+    getTasksForListInputSchema,
+    getTasksForListToolInfo,
+    getTasksInputSchema,
+    getTasksToolInfo
+} from "../tools/tasks/get-google-tasks";
+import { 
+    createCreateTaskHandler, 
+    createCreateTaskListHandler, 
+    createDeleteTaskHandler,
+    createTaskInputSchema,
+    createTaskListToolInfo,
+    createTaskToolInfo,
+    createUpdateTaskHandler,
+    deleteTaskInputSchema,
+    deleteTaskToolInfo,
+    updateTaskInputSchema,
+    updateTaskToolInfo,
+} from "../tools/tasks/upsert-google-tasks";
+import zodToJsonSchema from "zod-to-json-schema";
 
-// Type definition for MCP tool handler
-type McpToolHandler = (params: any, context: any) => Promise<any>;
 
 export class AuthenticatedMcpServer {
     // Server name and version for configuration
@@ -67,6 +117,234 @@ export class AuthenticatedMcpServer {
         this.server.tool(name, description, schema, handler);
     }
 
+    private registerCalendarTools(): void {
+        // get calendar list tool
+        this.server.tool(
+            getCalendarListToolInfo.name,
+            getCalendarListToolInfo.description,
+            getCalendarListInputSchema.shape,
+            createGetCalendarListHandler(
+                (sessionId) => {
+                    // Use the helper method to get token info with logging
+                    this.getTokenInfoForSession(sessionId);
+                    // Return the auth info as before
+                    return this.sessionAuth.get(sessionId);
+                },
+                (clientId) => this.clients.get(clientId)
+            )
+        );
+
+        // get calendar events tool
+        this.server.tool(
+            getCalendarEventsToolInfo.name,
+            getCalendarEventsToolInfo.description,
+            getCalendarEventsInputSchema.shape,
+            createGetCalendarEventsHandler(
+                (sessionId) => {
+                    // use the helper method to get token info with logging
+                    this.getTokenInfoForSession(sessionId);
+                    // return the auth info 
+                    return this.sessionAuth.get(sessionId);
+                },
+                (clientId) => this.clients.get(clientId)
+            )
+        );
+
+        this.server.registerTool(
+            getEventsForTodayToolInfo.name,
+            {
+                title: getEventsForTodayToolInfo.name,
+                description: getEventsForTodayToolInfo.description,
+                inputSchema: getEventsForTodayInputSchema.shape 
+            },
+            createGetEventsForTodayHandler(
+                (sessionId) => {
+                    this.getTokenInfoForSession(sessionId);
+                    return this.sessionAuth.get(sessionId);
+                },
+                (clientId) => this.clients.get(clientId)
+            )
+        )
+
+        // Add Get Events For Date tool
+        this.server.tool(
+            getEventsForDateToolInfo.name,
+            getEventsForDateToolInfo.description,
+            getEventsForDateInputSchema.shape,
+            createGetEventsForDateHandler(
+                (sessionId) => {
+                    // Use the helper method to get token info with logging
+                    this.getTokenInfoForSession(sessionId);
+                    // Return the auth info as before
+                    return this.sessionAuth.get(sessionId);
+                },
+                (clientId) => this.clients.get(clientId)
+            )
+        );
+
+        // Add Get Events For Date Range tool
+        this.server.tool(
+            getEventsForDateRangeToolInfo.name,
+            getEventsForDateRangeToolInfo.description,
+            getEventsForDateRangeInputSchema.shape,
+            createGetEventsForDateRangeHandler(
+                (sessionId) => {
+                    // Use the helper method to get token info with logging
+                    this.getTokenInfoForSession(sessionId);
+                    // Return the auth info as before
+                    return this.sessionAuth.get(sessionId);
+                },
+                (clientId) => this.clients.get(clientId)
+            )
+        );
+
+        // create calendar event tool
+        this.server.tool(
+            createCalendarEventToolInfo.name,
+            createCalendarEventToolInfo.description,
+            createCalendarEventInputSchema.shape,
+            createCreateCalendarEventHandler(
+                (sessionId) => {
+                    this.getTokenInfoForSession(sessionId);
+                    return this.sessionAuth.get(sessionId);
+                },
+                (clientId) => this.clients.get(clientId)
+            )
+        );
+
+        // Add Create Recurring Event tool
+        this.server.tool(
+            createRecurringEventToolInfo.name,
+            createRecurringEventToolInfo.description,
+            createRecurringEventInputSchema.shape,
+            createCreateRecurringEventHandler(
+                (sessionId) => {
+                    // Use the helper method to get token info with logging
+                    this.getTokenInfoForSession(sessionId);
+                    // Return the auth info as before
+                    return this.sessionAuth.get(sessionId);
+                },
+                (clientId) => this.clients.get(clientId)
+            )
+        );
+    }
+
+    private registerGoogleTaskTools(): void {
+        // google tasks tool
+        this.server.registerTool(
+            getTasksToolInfo.name,
+            {
+                title: getTasksToolInfo.name,
+                description: getTasksToolInfo.description,
+                inputSchema: getTasksInputSchema.shape 
+            },
+            createGetTasksHandler(
+                (sessionId) => {
+                    this.getTokenInfoForSession(sessionId);
+                    return this.sessionAuth.get(sessionId);
+                },
+                (clientId) => this.clients.get(clientId)
+            )
+        );
+
+        // get task lists tool
+        this.server.tool(
+            getTaskListsToolInfo.name,
+            getTaskListsToolInfo.description,
+            getTaskListsInputSchema.shape,
+            createGetTaskListsHandler(
+                (sessionId) => {
+                    // Use the helper method to get token info with logging
+                    this.getTokenInfoForSession(sessionId);
+                    // Return the auth info as before
+                    return this.sessionAuth.get(sessionId);
+                },
+                (clientId) => this.clients.get(clientId)
+            )
+        );
+
+        // get tasks for list tool
+        this.server.tool(
+            getTasksForListToolInfo.name,
+            getTasksForListToolInfo.description,
+            getTasksForListInputSchema.shape,
+            createGetTasksForListHandler(
+                (sessionId) => {
+                    // Use the helper method to get token info with logging
+                    this.getTokenInfoForSession(sessionId);
+                    // Return the auth info as before
+                    return this.sessionAuth.get(sessionId);
+                },
+                (clientId) => this.clients.get(clientId)
+            )
+        );
+
+        // get task list tool
+        this.server.registerTool(
+            createTaskListToolInfo.name,
+            {
+                title: createTaskListToolInfo.name,
+                description: createTaskListToolInfo.description,
+                inputSchema: createTaskListInputSchema.shape
+            },
+            createCreateTaskListHandler(
+                (sessionId) => {
+                    this.getTokenInfoForSession(sessionId);
+                    return this.sessionAuth.get(sessionId);
+                },
+                (clientId) => this.clients.get(clientId)
+            )
+        );
+
+        // Add Create Task tool
+        this.server.tool(
+            createTaskToolInfo.name,
+            createTaskToolInfo.description,
+            createTaskInputSchema.shape,
+            createCreateTaskHandler(
+                (sessionId) => {
+                    // Use the helper method to get token info with logging
+                    this.getTokenInfoForSession(sessionId);
+                    // Return the auth info as before
+                    return this.sessionAuth.get(sessionId);
+                },
+                (clientId) => this.clients.get(clientId)
+            )
+        );
+
+        // Add Update Task tool
+        this.server.tool(
+            updateTaskToolInfo.name,
+            updateTaskToolInfo.description,
+            updateTaskInputSchema.shape,
+            createUpdateTaskHandler(
+                (sessionId) => {
+                    // Use the helper method to get token info with logging
+                    this.getTokenInfoForSession(sessionId);
+                    // Return the auth info as before
+                    return this.sessionAuth.get(sessionId);
+                },
+                (clientId) => this.clients.get(clientId)
+            )
+        );
+
+        // Add Delete Task tool
+        this.server.tool(
+            deleteTaskToolInfo.name,
+            deleteTaskToolInfo.description,
+            deleteTaskInputSchema.shape,
+            createDeleteTaskHandler(
+                (sessionId) => {
+                    // Use the helper method to get token info with logging
+                    this.getTokenInfoForSession(sessionId);
+                    // Return the auth info as before
+                    return this.sessionAuth.get(sessionId);
+                },
+                (clientId) => this.clients.get(clientId)
+            )
+        );
+    }
+
     private registerTools(): void {
         // to check auth
         this.server.tool(
@@ -75,6 +353,10 @@ export class AuthenticatedMcpServer {
             {},
             this.createWhoAmIHandler()
         );
+
+        this.registerCalendarTools();
+        console.log("registering google task tools");
+        this.registerGoogleTaskTools();
     }
 
     /**
@@ -155,13 +437,11 @@ export class AuthenticatedMcpServer {
         };
     }
 
-
-
     /**
-  * Decode JWT token without verification
-  * @param token The JWT token
-  * @returns Decoded payload or null if invalid
-  */
+     * Decode JWT token without verification
+     * @param token The JWT token
+     * @returns Decoded payload or null if invalid
+     */
     private decodeJwt(token: string): any {
         try {
             const base64Url = token.split(".")[1];
@@ -175,7 +455,6 @@ export class AuthenticatedMcpServer {
             return null;
         }
     }
-
 
     /**
      * Get MCP configuration data
@@ -216,8 +495,6 @@ export class AuthenticatedMcpServer {
         });
     }
 
-
-
     /**
      * Get OAuth server metadata
      * @param baseUrl The base URL of the server
@@ -240,8 +517,6 @@ export class AuthenticatedMcpServer {
             access_token_signing_alg_values_supported: ["RS256"],
         };
     }
-
-
 
     /**
      * Register a new client
@@ -289,7 +564,6 @@ export class AuthenticatedMcpServer {
         this.clients.set(clientId, clientData);
     }
 
-
     /**
      * Find client by authorization code
      * @param code The authorization code
@@ -308,9 +582,6 @@ export class AuthenticatedMcpServer {
         }
         return null;
     }
-
-
-
 
     /**
      * Handle SSE connection with authentication
@@ -444,8 +715,6 @@ export class AuthenticatedMcpServer {
                 console.error("Error connecting to MCP server:", error);
             });
     }
-
-
 
     /**
      * Handle JSON-RPC messages with authentication
@@ -594,9 +863,6 @@ export class AuthenticatedMcpServer {
         }
     }
 
-
-
-
     /**
      * Get token info for a session
      * @param sessionId The session ID
@@ -685,9 +951,5 @@ export class AuthenticatedMcpServer {
             clientTokens: tokenInfo,
         };
     }
-
-
-
-
 }
 
