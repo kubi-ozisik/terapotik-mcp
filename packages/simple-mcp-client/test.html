@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        button {
+            padding: 12px 24px;
+            margin: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #007AFF;
+            color: white;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #log {
+            background: #f5f5f5;
+            padding: 15px;
+            margin: 15px 0;
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>MCP Test Interface</h1>
+
+    <button id="authBtn" onclick="startAuth()">1. Authorize & Get Token</button>
+    <button id="whoamiBtn" onclick="testWhoami()" disabled>2. Test WhoAmI (SSE)</button>
+    <button id="httpBtn" onclick="testHttpStreamable()" disabled>3. Test WhoAmI (HTTP Streamable)</button>
+
+    <div id="log"></div>
+
+    <script>
+        let accessToken = null;
+        let sseConnection = null;
+
+        function log(msg) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += new Date().toLocaleTimeString() + ': ' + msg + '<br>';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // Check if we're coming back from OAuth
+        window.addEventListener('load', function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+
+            if (code) {
+                log('🔄 Returned from OAuth - exchanging code for token...');
+                handleOAuthReturn(code);
+            } else {
+                log('🚀 Ready to start OAuth flow');
+            }
+        });
+
+        async function handleOAuthReturn(code) {
+            try {
+                const clientInfo = JSON.parse(sessionStorage.getItem('mcp_client'));
+                const codeVerifier = sessionStorage.getItem('mcp_verifier');
+                const metadata = JSON.parse(sessionStorage.getItem('mcp_metadata'));
+
+                const tokenResponse = await fetch(metadata.token_endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        grant_type: 'authorization_code',
+                        code: code,
+                        client_id: clientInfo.client_id,
+                        redirect_uri: window.location.origin + window.location.pathname,
+                        code_verifier: codeVerifier
+                    })
+                });
+
+                const tokens = await tokenResponse.json();
+                accessToken = tokens.access_token;
+
+                log('✅ Got access token!');
+                document.getElementById('whoamiBtn').disabled = false;
+                document.getElementById('httpBtn').disabled = false;
+                document.getElementById('authBtn').textContent = '✅ Authorized';
+
+                // Clean up
+                sessionStorage.clear();
+                window.history.replaceState({}, document.title, window.location.pathname);
+
+            } catch (error) {
+                log('❌ Token exchange failed: ' + error.message);
+            }
+        }
+
+        async function startAuth() {
+            try {
+                log('🔍 Discovering OAuth endpoints...');
+
+                const metadata = await fetch('http://localhost:3001/.well-known/oauth-authorization-server')
+                    .then(r => r.json());
+
+                log('✅ Endpoints discovered');
+
+                const clientData = {
+                    client_name: 'HTML Test Client',
+                    redirect_uris: [window.location.origin + window.location.pathname],
+                    token_endpoint_auth_method: 'none',
+                    grant_types: ['authorization_code'],
+                    response_types: ['code']
+                };
+
+                const clientInfo = await fetch(metadata.registration_endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(clientData)
+                }).then(r => r.json());
+
+                log('✅ Client registered: ' + clientInfo.client_id);
+
+                const codeVerifier = generateCodeVerifier();
+                const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+                // Store for when we return
+                sessionStorage.setItem('mcp_client', JSON.stringify(clientInfo));
+                sessionStorage.setItem('mcp_verifier', codeVerifier);
+                sessionStorage.setItem('mcp_metadata', JSON.stringify(metadata));
+
+                const authUrl = metadata.authorization_endpoint + '?' + new URLSearchParams({
+                    response_type: 'code',
+                    client_id: clientInfo.client_id,
+                    redirect_uri: window.location.origin + window.location.pathname,
+                    scope: 'openid profile',
+                    state: 'test123',
+                    code_challenge: codeChallenge,
+                    code_challenge_method: 'S256'
+                });
+
+                log('🔗 Redirecting to authorization...');
+                window.location.href = authUrl;
+
+            } catch (error) {
+                log('❌ Auth failed: ' + error.message);
+            }
+        }
+
+        async function testWhoami() {
+            if (!accessToken) {
+                log('❌ No token - authorize first');
+                return;
+            }
+
+            log('🔌 Connecting to SSE...');
+
+            // EventSource doesn't support custom headers in browsers
+            // Pass token as query parameter instead
+            sseConnection = new EventSource(`http://localhost:3001/sse?token=${accessToken}`);
+
+            sseConnection.onopen = () => {
+                log('✅ SSE connected');
+
+                setTimeout(() => {
+                    sendMCPMessage({
+                        jsonrpc: '2.0',
+                        id: 1,
+                        method: 'initialize',
+                        params: {
+                            protocolVersion: '2024-11-05',
+                            capabilities: { tools: {} },
+                            clientInfo: { name: 'HTML Client', version: '1.0.0' }
+                        }
+                    });
+                }, 100);
+            };
+
+            sseConnection.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                log('📨 Received: ' + JSON.stringify(data));
+
+                // Handle initialization response
+                if (data.result && data.result.protocolVersion) {
+                    log('🎉 MCP initialized - calling whoami...');
+                    setTimeout(() => {
+                        sendMCPMessage({
+                            jsonrpc: '2.0',
+                            id: 2,
+                            method: 'tools/call',
+                            params: { name: 'whoami', arguments: {} }
+                        });
+                    }, 500);
+                }
+
+                // Handle tool call results
+                if (data.result && data.id === 2) {
+                    log('✅ WhoAmI Result: ' + JSON.stringify(data.result, null, 2));
+                }
+            };
+
+            sseConnection.onerror = (error) => {
+                log('❌ SSE error: ' + error);
+            };
+        }
+
+        async function sendMCPMessage(message) {
+            log('📤 Sending: ' + JSON.stringify(message));
+
+            try {
+                await fetch('http://localhost:3001/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: JSON.stringify(message)
+                });
+            } catch (error) {
+                log('❌ Send failed: ' + error.message);
+            }
+        }
+
+        function generateCodeVerifier() {
+            const array = new Uint8Array(32);
+            crypto.getRandomValues(array);
+            return base64URLEncode(array);
+        }
+
+        async function generateCodeChallenge(verifier) {
+            const data = new TextEncoder().encode(verifier);
+            const digest = await crypto.subtle.digest('SHA-256', data);
+            return base64URLEncode(new Uint8Array(digest));
+        }
+
+        function base64URLEncode(array) {
+            return btoa(String.fromCharCode(...array))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '');
+        }
+
+        async function testHttpStreamable() {
+            if (!accessToken) {
+                log('❌ No token - authorize first');
+                return;
+            }
+
+            log('🔧 Testing HTTP Streamable...');
+
+            try {
+                // Step 1: Initialize session
+                const initResponse = await fetch('http://localhost:3002/mcp', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json, text/event-stream'
+                    },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: 1,
+                        method: 'initialize',
+                        params: {
+                            protocolVersion: '2024-11-05',
+                            capabilities: { tools: {} },
+                            clientInfo: { name: 'HTML Client', version: '1.0.0' }
+                        }
+                    })
+                });
+
+                const sessionId = initResponse.headers.get('Mcp-Session-Id');
+                log('📋 Available headers: ' + JSON.stringify(Array.from(initResponse.headers.entries())));
+                log('✅ HTTP session created: ' + sessionId);
+
+                // Step 2: Call whoami with session ID
+                const whoamiResponse = await fetch('http://localhost:3002/mcp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json, text/event-stream',
+                        'Mcp-Session-Id': sessionId
+                    },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: 2,
+                        method: 'tools/call',
+                        params: { name: 'whoami', arguments: {} }
+                    })
+                });
+
+                // Handle both JSON and streaming responses
+                const contentType = whoamiResponse.headers.get('content-type');
+                log('📋 Response content-type: ' + contentType);
+                
+                if (contentType && contentType.includes('text/event-stream')) {
+                    // Handle streaming response
+                    const reader = whoamiResponse.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+                                    log('📨 Streamed data: ' + JSON.stringify(data, null, 2));
+                                    
+                                    // If this is our whoami result, break
+                                    if (data.result && data.id === 2) {
+                                        log('✅ HTTP WhoAmI Result: ' + JSON.stringify(data.result, null, 2));
+                                        return;
+                                    }
+                                } catch (e) {
+                                    log('⚠️ Failed to parse streamed data: ' + line);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Handle regular JSON response
+                    const result = await whoamiResponse.json();
+                    log('✅ HTTP WhoAmI Result: ' + JSON.stringify(result, null, 2));
+                }
+
+            } catch (error) {
+                log('❌ HTTP test failed: ' + error.message);
+            }
+        }
+    </script>
+</body>
+
+</html>

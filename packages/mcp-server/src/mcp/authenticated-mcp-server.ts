@@ -593,20 +593,37 @@ export class AuthenticatedMcpServer {
     public handleSseConnection(req: Request, res: Response): void {
         console.log("SSE connection requested with headers:", req.headers);
 
-        // Check for authorization header
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            console.log("Unauthorized SSE connection attempt");
+        // // Check for authorization header
+        // const authHeader = req.headers.authorization;
+        // if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        //     console.log("Unauthorized SSE connection attempt");
 
-            // This header triggers the OAuth flow in MCP Inspector
+        //     // This header triggers the OAuth flow in MCP Inspector
+        //     res.setHeader("WWW-Authenticate", "Bearer");
+        //     res.status(401).end();
+        //     return;
+        // }
+
+        // // Extract the token
+        // const token = authHeader.substring(7);
+
+        // checking auth header first
+        let authHeader = req.headers.authorization;
+        let token = null;
+        if (authHeader && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        } else {
+            // fallback: check query parameter (browser EventSource limitations)
+            const url = new URL(req.url!, `http://${req.headers.host}`);
+            token = url.searchParams.get("token");
+        }
+
+        if (!token) {
+            console.log("No token provided in header or query");
             res.setHeader("WWW-Authenticate", "Bearer");
             res.status(401).end();
             return;
         }
-
-        // Extract the token
-        const token = authHeader.substring(7);
-
         // Find the client with this token
         let tokenValid = false;
         let clientId = null;
@@ -618,7 +635,15 @@ export class AuthenticatedMcpServer {
                 break;
             }
         }
-
+        // try {
+        //     const payload = JSON.parse(atob(token.split('.')[1]));
+        //     if (payload.sub && payload.aud && payload.aud.includes('urn:terapotik-api')) {
+        //         tokenValid = true;
+        //         clientId = payload.sub;
+        //     }
+        // } catch (error) {
+        //     console.log("Token validation failed:", error);
+        // }
         if (!tokenValid) {
             console.log("Invalid token provided");
             res.setHeader("WWW-Authenticate", 'Bearer error="invalid_token"');
@@ -753,17 +778,25 @@ export class AuthenticatedMcpServer {
                     break;
                 }
             }
-
-            if (!tokenValid) {
-                console.log("Invalid token in message");
-                res.setHeader("WWW-Authenticate", 'Bearer error="invalid_token"');
-                res.status(401).json({
-                    jsonrpc: "2.0",
-                    error: { code: -32600, message: "Invalid token" },
-                    id: null,
-                });
-                return;
-            }
+            // try {
+            //     const payload = JSON.parse(atob(token.split('.')[1]));
+            //     if (payload.sub && payload.aud && payload.aud.includes('urn:terapotik-api')) {
+            //         tokenValid = true;
+            //         clientId = payload.sub;
+            //     }
+            // } catch (error) {
+            //     console.log("Token validation failed:", error);
+            // }
+            // if (!tokenValid) {
+            //     console.log("Invalid token in message");
+            //     res.setHeader("WWW-Authenticate", 'Bearer error="invalid_token"');
+            //     res.status(401).json({
+            //         jsonrpc: "2.0",
+            //         error: { code: -32600, message: "Invalid token" },
+            //         id: null,
+            //     });
+            //     return;
+            // }
 
             // Parse message
             let message;

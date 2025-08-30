@@ -5,215 +5,267 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { randomUUID } from "crypto";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 
+interface SessionData {
+  transport: StreamableHTTPServerTransport;
+  mcpServer: McpServer;
+  createdAt: number;
+  lastAccessed: number;
+  authInfo?: any; // For future OAuth integration
+}
+
 /**
- * Simple HTTP streamable MCP server for Claude Desktop and other HTTP clients
- * No OAuth, no SSE - just clean HTTP streamable transport
+ * HTTP Streamable MCP server - true MCP protocol over HTTP with session management
  */
 export class HttpStreamableServer {
-    private app: Express;
-    private mcpServer: McpServer;
-    private transports: Map<string, StreamableHTTPServerTransport> = new Map();
-    private port: number;
-    private serverName: string;
-    private serverVersion: string;
+  private app: Express;
+  private sessions: Map<string, SessionData> = new Map();
+  private port: number;
+  private serverName: string;
+  private serverVersion: string;
 
-    constructor(serverName: string, serverVersion: string, port: number) {
-        this.serverName = serverName;
-        this.serverVersion = serverVersion;
-        this.port = port;
+  constructor(serverName: string, serverVersion: string, port: number) {
+    this.serverName = serverName;
+    this.serverVersion = serverVersion;
+    this.port = port;
+    
+    // Initialize Express app
+    this.app = express();
+    this.setupMiddleware();
+    this.setupRoutes();
+    
+    // Cleanup old sessions every 5 minutes
+    setInterval(() => this.cleanupSessions(), 5 * 60 * 1000);
+  }
+
+  /**
+   * Setup Express middleware
+   */
+  private setupMiddleware(): void {
+    this.app.use(cors({
+      exposedHeaders: ['Mcp-Session-Id', 'mcp-session-id'],
+      allowedHeaders: ['Content-Type', 'Accept', 'mcp-session-id', 'Mcp-Session-Id', 'authorization'],
+    }));
+    this.app.use(express.json());
+  }
+
+  /**
+   * Setup Express routes
+   */
+  private setupRoutes(): void {
+    // Main MCP endpoint for HTTP streamable transport
+    this.app.post('/mcp', async (req, res) => {
+      await this.handleMcpRequest(req, res);
+    });
+
+    // Health check endpoint
+    this.app.get('/health', (req, res) => {
+      res.json({
+        status: "ok",
+        service: this.serverName,
+        version: this.serverVersion,
+        transport: "http-streamable",
+        timestamp: new Date().toISOString(),
+        activeSessions: this.sessions.size
+      });
+    });
+
+    // OAuth discovery endpoints (for future)
+    this.app.get('/.well-known/oauth-authorization-server', (req, res) => {
+      res.json({
+        issuer: `http://localhost:${this.port}`,
+        authorization_endpoint: `http://localhost:${this.port}/authorize`,
+        token_endpoint: `http://localhost:${this.port}/token`,
+        // TODO: Implement OAuth endpoints
+      });
+    });
+  }
+
+  /**
+   * Handle MCP HTTP streamable requests - core of the implementation
+   */
+  private async handleMcpRequest(req: Request, res: Response): Promise<void> {
+    try {
+      const sessionId = req.headers['mcp-session-id'] as string | undefined;
+      let sessionData: SessionData;
+
+      if (sessionId && this.sessions.has(sessionId)) {
+        // Reuse existing session
+        sessionData = this.sessions.get(sessionId)!;
+        sessionData.lastAccessed = Date.now();
+        process.stderr.write(`Reusing session: ${sessionId}\n`);
+      } else if (!sessionId && isInitializeRequest(req.body)) {
+        // New initialization request - create session
+        const newSessionId = randomUUID();
+        process.stderr.write(`Creating new session: ${newSessionId}\n`);
         
-        // Initialize Express app
-        this.app = express();
-        this.setupMiddleware();
-        this.setupRoutes();
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => newSessionId,
+          onsessioninitialized: (sessionId) => {
+            process.stderr.write(`Session initialized: ${sessionId}\n`);
+          },
+        });
+
+        // Create MCP server for this session
+        const mcpServer = new McpServer({
+          name: this.serverName,
+          version: this.serverVersion,
+        });
+
+        // Register whoami tool
+        this.registerWhoamiTool(mcpServer);
+
+        // Store session data
+        sessionData = {
+          transport,
+          mcpServer,
+          createdAt: Date.now(),
+          lastAccessed: Date.now(),
+        };
+
+        this.sessions.set(newSessionId, sessionData);
+
+        // Set session ID header for client
+        res.setHeader('Mcp-Session-Id', newSessionId);
+        process.stderr.write(`Setting session ID header: ${newSessionId}\n`);
+
+        // Connect transport to MCP server
+        await sessionData.mcpServer.connect(sessionData.transport);
+        process.stderr.write(`MCP server connected to transport for session: ${newSessionId}\n`);
         
-        // Initialize MCP server with tools
-        this.mcpServer = new McpServer({
-            name: this.serverName,
-            version: this.serverVersion,
+        // Clean up session when transport closes
+        sessionData.transport.onclose = () => {
+          this.sessions.delete(newSessionId);
+          process.stderr.write(`Session closed and cleaned up: ${newSessionId}\n`);
+        };
+
+      } else {
+        // Invalid request - no session ID and not an initialize request
+        res.status(400).json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32000,
+            message: 'Bad Request: No valid session ID provided or missing initialization',
+          },
+          id: null,
         });
-        
-        this.registerTools();
-    }
+        return;
+      }
 
-    /**
-     * Setup Express middleware
-     */
-    private setupMiddleware(): void {
-        this.app.use(cors({
-            exposedHeaders: ['Mcp-Session-Id'],
-            allowedHeaders: ['Content-Type', 'mcp-session-id'],
-        }));
-        this.app.use(express.json());
-    }
-
-    /**
-     * Setup Express routes
-     */
-    private setupRoutes(): void {
-        // Main MCP endpoint for HTTP streamable transport
-        this.app.post('/mcp', async (req, res) => {
-            await this.handleMcpRequest(req, res);
+      // Handle the request through the transport
+      await sessionData.transport.handleRequest(req, res, req.body);
+      
+    } catch (error) {
+      process.stderr.write(`Error handling HTTP streamable MCP request: ${error}\n`);
+      if (!res.headersSent) {
+        res.status(500).json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32603,
+            message: 'Internal server error',
+          },
+          id: null,
         });
-
-        // Health check endpoint
-        this.app.get('/health', (req, res) => {
-            res.json({
-                status: "ok",
-                service: this.serverName,
-                version: this.serverVersion,
-                transport: "http-streamable",
-                timestamp: new Date().toISOString(),
-                activeSessions: this.transports.size
-            });
-        });
+      }
     }
+  }
 
-    /**
-     * Register MCP tools
-     */
-    private registerTools(): void {
-        // this.mcpServer.registerTool(
-        //     "ping",
-        //     {
-        //         title: "Ping",
-        //         description: "Simple ping tool to test HTTP streamable transport",
-        //         inputSchema: {
-        //             type: "object",
-        //             properties: {
-        //                 message: {
-        //                     type: "string",
-        //                     description: "Message to echo back"
-        //                 }
-        //             }
-        //         },
-        //     },
-        //     async (args) => {
-        //         return {
-        //             content: [
-        //                 {
-        //                     type: "text",
-        //                     text: `Pong! You said: ${args.message || "nothing"} (via HTTP streamable transport)`
-        //                 }
-        //             ],
-        //         };
-        //     }
-        // );
-    }
-
-    /**
-     * Handle MCP HTTP streamable requests
-     */
-    private async handleMcpRequest(req: Request, res: Response): Promise<void> {
+  /**
+   * Register the whoami tool - reusing your existing pattern
+   */
+  private registerWhoamiTool(server: McpServer): void {
+    server.registerTool(
+      "whoami",
+      {
+        title: "Who Am I",
+        description: "Get information about the current user session", 
+        inputSchema: {} // No input parameters
+      },
+      async (params, context) => {
+        console.log("whoami tool called");
+        console.log("params", params);
+        console.log("context", context);
         try {
-            const sessionId = req.headers['mcp-session-id'] as string | undefined;
-            let transport: StreamableHTTPServerTransport;
-
-            if (sessionId && this.transports.has(sessionId)) {
-                // Reuse existing transport
-                transport = this.transports.get(sessionId)!;
-            } else if (!sessionId && isInitializeRequest(req.body)) {
-                // New initialization request
-                transport = new StreamableHTTPServerTransport({
-                    sessionIdGenerator: () => randomUUID(),
-                    onsessioninitialized: (sessionId) => {
-                        // Store the transport by session ID
-                        this.transports.set(sessionId, transport);
-                        process.stderr.write(`HTTP streamable session initialized: ${sessionId}\n`);
-                    },
-                });
-
-                // Clean up transport when closed
-                transport.onclose = () => {
-                    if (transport.sessionId) {
-                        this.transports.delete(transport.sessionId);
-                        process.stderr.write(`HTTP streamable session closed: ${transport.sessionId}\n`);
-                    }
-                };
-
-                // Connect to the MCP server
-                await this.mcpServer.connect(transport);
-                process.stderr.write('HTTP streamable transport connected to MCP server\n');
-            } else {
-                // Invalid request
-                res.status(400).json({
-                    jsonrpc: '2.0',
-                    error: {
-                        code: -32000,
-                        message: 'Bad Request: No valid session ID provided or invalid initialization',
-                    },
-                    id: null,
-                });
-                return;
-            }
-
-            // Handle the request
-            await transport.handleRequest(req, res, req.body);
+          // For HTTP transport, we don't have full auth context yet
+          // But we can return session information
+          return {
+            content: [
+              {
+                type: "text",
+                text: `HTTP Streamable Session Info:
+  Transport: HTTP Streamable
+  Server: ${this.serverName} v${this.serverVersion}  
+  Session Count: ${this.sessions.size}
+  Request Time: ${new Date().toISOString()}
+  
+  Note: Full authentication will be implemented in OAuth integration.`
+              }
+            ]
+          };
         } catch (error) {
-            process.stderr.write(`Error handling HTTP streamable MCP request: ${error}\n`);
-            res.status(500).json({
-                jsonrpc: '2.0',
-                error: {
-                    code: -32603,
-                    message: 'Internal server error',
-                },
-                id: null,
-            });
+          console.error("Error in whoami tool:", error);
+          return {
+            content: [
+              {
+                type: "text",
+                text: "Error retrieving session information.",
+              },
+            ],
+          };
         }
-    }
+      }
+    );
+  }
 
-    /**
-     * Add a custom tool to the MCP server
-     */
-    public addTool(
-        name: string,
-        schema: any,
-        handler: (args: any) => Promise<any>
-    ): void {
-        this.mcpServer.registerTool(name, schema, handler);
-    }
+  /**
+   * Cleanup old sessions (prevent memory leaks)
+   */
+  private cleanupSessions(): void {
+    const now = Date.now();
+    const maxAge = 30 * 60 * 1000; // 30 minutes
 
-    /**
-     * Get the Express app (useful for adding custom routes)
-     */
-    public getApp(): Express {
-        return this.app;
+    for (const [sessionId, sessionData] of this.sessions.entries()) {
+      if (now - sessionData.lastAccessed > maxAge) {
+        sessionData.transport.close?.();
+        this.sessions.delete(sessionId);
+        process.stderr.write(`Cleaned up inactive session: ${sessionId}\n`);
+      }
     }
+  }
 
-    /**
-     * Get the internal MCP server instance (for tool registration)
-     */
-    public getMcpServer(): McpServer {
-        return this.mcpServer;
-    }
+  /**
+   * Get active session count
+   */
+  public getActiveSessionCount(): number {
+    return this.sessions.size;
+  }
 
-    /**
-     * Get active session count
-     */
-    public getActiveSessionCount(): number {
-        return this.transports.size;
-    }
+  /**
+   * Start the HTTP streamable server
+   */
+  public start(): void {
+    this.app.listen(this.port, () => {
+      process.stderr.write(`HTTP Streamable MCP Server running on port ${this.port}\n`);
+      process.stderr.write(`Health check: http://localhost:${this.port}/health\n`);
+      process.stderr.write(`MCP endpoint: POST http://localhost:${this.port}/mcp\n`);
+    });
+  }
 
-    /**
-     * Start the HTTP streamable server
-     */
-    public start(): void {
-        this.app.listen(this.port, () => {
-            process.stderr.write(`HTTP Streamable MCP Server running on port ${this.port}\n`);
-            process.stderr.write(`Health check: http://localhost:${this.port}/health\n`);
-            process.stderr.write(`MCP endpoint: POST http://localhost:${this.port}/mcp\n`);
-        });
+  /**
+   * Stop the server and cleanup all sessions
+   */
+  public stop(): void {
+    // Close all active sessions
+    for (const [sessionId, sessionData] of this.sessions.entries()) {
+      sessionData.transport.close?.();
     }
+    this.sessions.clear();
+    process.stderr.write('HTTP Streamable MCP Server stopped\n');
+  }
 
-    /**
-     * Stop the server and cleanup
-     */
-    public stop(): void {
-        // Close all active transports
-        for (const transport of this.transports.values()) {
-            transport.close?.();
-        }
-        this.transports.clear();
-        process.stderr.write('HTTP Streamable MCP Server stopped\n');
-    }
+  /**
+   * Get the Express app (for integration with unified server)
+   */
+  public getApp(): Express {
+    return this.app;
+  }
 }
