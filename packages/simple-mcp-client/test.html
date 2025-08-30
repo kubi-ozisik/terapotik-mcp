@@ -49,7 +49,7 @@
     <button id="authBtn" onclick="startAuth()">1. Authorize & Get Token</button>
     <button id="whoamiBtn" onclick="testWhoami()" disabled>2. Test WhoAmI (SSE)</button>
     <button id="httpBtn" onclick="testHttpStreamable()" disabled>3. Test WhoAmI (HTTP Streamable)</button>
-
+    <button id="httpCalendarBtn" onclick="testHttpStreamableCalendar()">4. Test Calendar (HTTP Streamable)</button>
     <div id="log"></div>
 
     <script>
@@ -268,7 +268,9 @@
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json, text/event-stream'
+                        'Accept': 'application/json, text/event-stream',
+                        'Authorization': `Bearer ${accessToken}` 
+
                     },
                     body: JSON.stringify({
                         jsonrpc: '2.0',
@@ -292,13 +294,111 @@
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json, text/event-stream',
-                        'Mcp-Session-Id': sessionId
+                        'Mcp-Session-Id': sessionId,
+                        'Authorization': `Bearer ${accessToken}`
                     },
                     body: JSON.stringify({
                         jsonrpc: '2.0',
                         id: 2,
                         method: 'tools/call',
                         params: { name: 'whoami', arguments: {} }
+                    })
+                });
+
+                // Handle both JSON and streaming responses
+                const contentType = whoamiResponse.headers.get('content-type');
+                log('📋 Response content-type: ' + contentType);
+                
+                if (contentType && contentType.includes('text/event-stream')) {
+                    // Handle streaming response
+                    const reader = whoamiResponse.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+                                    log('📨 Streamed data: ' + JSON.stringify(data, null, 2));
+                                    
+                                    // If this is our whoami result, break
+                                    if (data.result && data.id === 2) {
+                                        log('✅ HTTP WhoAmI Result: ' + JSON.stringify(data.result, null, 2));
+                                        return;
+                                    }
+                                } catch (e) {
+                                    log('⚠️ Failed to parse streamed data: ' + line);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Handle regular JSON response
+                    const result = await whoamiResponse.json();
+                    log('✅ HTTP WhoAmI Result: ' + JSON.stringify(result, null, 2));
+                }
+
+            } catch (error) {
+                log('❌ HTTP test failed: ' + error.message);
+            }
+        }
+
+
+        async function testHttpStreamableCalendar() {
+            if (!accessToken) {
+                log('❌ No token - authorize first');
+                return;
+            }
+
+            log('🔧 Testing HTTP Streamable...');
+
+            try {
+                // Step 1: Initialize session
+                const initResponse = await fetch('http://localhost:3002/mcp', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json, text/event-stream',
+                        'Authorization': `Bearer ${accessToken}` 
+                    },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: 1,
+                        method: 'initialize',
+                        params: {
+                            protocolVersion: '2024-11-05',
+                            capabilities: { tools: {} },
+                            clientInfo: { name: 'HTML Client', version: '1.0.0' }
+                        }
+                    })
+                });
+
+                const sessionId = initResponse.headers.get('Mcp-Session-Id');
+                log('📋 Available headers: ' + JSON.stringify(Array.from(initResponse.headers.entries())));
+                log('✅ HTTP session created: ' + sessionId);
+
+                // Step 2: Call whoami with session ID
+                const whoamiResponse = await fetch('http://localhost:3002/mcp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json, text/event-stream',
+                        'Mcp-Session-Id': sessionId,
+                        'Authorization': `Bearer ${accessToken}` 
+                    },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: 2,
+                        method: 'tools/call',
+                        params: { name: 'getEventsForToday', arguments: {} }
                     })
                 });
 

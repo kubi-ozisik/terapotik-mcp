@@ -8,6 +8,10 @@ import {
   UIMessage,
   wrapLanguageModel,
 } from "ai";
+import { getWeather } from "@/features/chat/tools/get-weather";
+import { createDocument } from "@/features/chat/tools/create-document";
+import { updateDocument } from "@/features/chat/tools/update-document";
+import { requestSuggestions } from "@/features/chat/tools/request-suggestions";
 import { AIModel } from "./config";
 import z from "zod";
 export interface ChatConfig {
@@ -150,11 +154,17 @@ export interface Suggestion {
 
 
 //////////////
+type weatherTool = InferUITool<typeof getWeather>;
+type createDocumentTool = InferUITool<ReturnType<typeof createDocument>>;
+type updateDocumentTool = InferUITool<ReturnType<typeof updateDocument>>;
+type requestSuggestionsTool = InferUITool<
+  ReturnType<typeof requestSuggestions>
+>;
 export type ChatTools = {
-  // getWeather: weatherTool;
-  // createDocument: createDocumentTool;
-  // updateDocument: updateDocumentTool;
-  // requestSuggestions: requestSuggestionsTool;
+  getWeather: weatherTool;
+  createDocument: createDocumentTool;
+  updateDocument: updateDocumentTool;
+  requestSuggestions: requestSuggestionsTool;
 };
 export type CustomUIDataTypes = {
   textDelta: string;

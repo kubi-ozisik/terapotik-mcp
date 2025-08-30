@@ -62,11 +62,13 @@ export async function POST(request: Request) {
     message,
     selectedChatModel,
     selectedVisibilityType,
+    mcpToken,
   }: {
     id: string;
     message: ChatMessage;
     selectedChatModel: ChatModel['id'];
     selectedVisibilityType: VisibilityType;
+    mcpToken: string | null;
   } = requestBody;
 
   const session = await auth();
@@ -129,19 +131,27 @@ export async function POST(request: Request) {
         }
       ]
     });
-    const accessToken = (session as any).accessToken;
-    const mcpClient = await createMCPClient({
-      transport: {
-        type: 'sse',
-        url: 'http://localhost:3001/sse',
-    
-        // optional: configure HTTP headers, e.g. for authentication
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      },
-    });
-    const tools = mcpClient.tools;
+    let mcpClient = null;
+    if (mcpToken) {
+      try {
+        mcpClient = await createMCPClient({
+          transport: {
+            type: 'sse', // Use your HTTP Streamable transport
+            url: 'http://localhost:3001/sse',
+            headers: {
+              'Authorization': `Bearer ${mcpToken}`,
+            },
+          },
+        });
+        
+        console.log('MCP client created with tools:', mcpClient.tools);
+      } catch (error) {
+        console.error('Failed to create MCP client:', error);
+      }
+    }
+
+    const tools = await mcpClient?.tools();
+    console.log('MCP client created with tools:', tools ? Object.keys(tools) : 'No tools');
 
     const streamId = await createStreamId({ chatId: id });
 

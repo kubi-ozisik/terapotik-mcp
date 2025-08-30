@@ -53,7 +53,6 @@ import {
     updateTaskInputSchema,
     updateTaskToolInfo,
 } from "../tools/tasks/upsert-google-tasks";
-import zodToJsonSchema from "zod-to-json-schema";
 
 
 export class AuthenticatedMcpServer {

@@ -15,7 +15,7 @@ export default function LoginPage() {
   const handleSignIn = async () => {
     setIsLoading(true)
     try {
-      await signIn("auth0", { callbackUrl: "/chat" })
+      await signIn("auth0", { callbackUrl: "/dashboard" })
     } catch (error) {
       console.error("Sign in error:", error)
     } finally {

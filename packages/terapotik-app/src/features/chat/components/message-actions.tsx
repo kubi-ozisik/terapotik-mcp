@@ -50,7 +50,7 @@ export function PureMessageActions({
           <CopyIcon />
         </Action>
 
-        <Action
+        {/* <Action
           tooltip="Upvote Response"
           data-testid="message-upvote"
           disabled={vote?.isUpvoted}
@@ -142,7 +142,7 @@ export function PureMessageActions({
               }}
         >
           <ThumbDownIcon />
-        </Action>
+        </Action> */}
     </Actions>
   );
 }

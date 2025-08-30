@@ -1,12 +1,9 @@
 import {
-    deleteTwoFactorConfirmation,
-    getTwoFactorTokenByEmail,
     getUserById,
-    linkUserEmail,
 } from "@/features/auth/actions/auth-actions";
 import { authConfig } from "@/shared/config/auth-config";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { UserRole } from "@prisma/client";
+// import { UserRole } from "@prisma/client";
 import NextAuth from "next-auth";
 import { db } from "./shared/data/db";
 
@@ -44,16 +41,16 @@ export const {
             // log.debug("EMAIL VERIFIED", existingUser?.emailVerified);
             if (!existingUser?.emailVerified) return false;
 
-            if (existingUser.isTwoFactorEnabled) {
-                const twoFactorConfirmation = await getTwoFactorTokenByEmail(
-                    existingUser.email!
-                );
+            // if (existingUser.isTwoFactorEnabled) {
+            //     const twoFactorConfirmation = await getTwoFactorTokenByEmail(
+            //         existingUser.email!
+            //     );
 
-                if (!twoFactorConfirmation) return false;
+            //     if (!twoFactorConfirmation) return false;
 
-                // Delete two factor confirmation for next sign in
-                await deleteTwoFactorConfirmation(twoFactorConfirmation.id);
-            }
+            //     // Delete two factor confirmation for next sign in
+            //     await deleteTwoFactorConfirmation(twoFactorConfirmation.id);
+            // }
             return true;
         },
         async jwt({ token, user, account }) {
@@ -62,7 +59,7 @@ export const {
                 // in the next-auth.d.ts file but TypeScript doesn't recognize them here
                 const typedUser = user as any;
                 token.accessToken = account?.access_token as string;
-                token.role = typedUser.role || UserRole.USER;
+                // token.role = typedUser.role || UserRole.USER;
                 token.isTwoFactorEnabled = typedUser.isTwoFactorEnabled || false;
                 token.isApproved = typedUser.isApproved || false;
                 token.id = typedUser.id;
@@ -102,7 +99,6 @@ export const {
         async linkAccount({ user, account, profile }) {
             //   log.debug("LINKING", user, account, profile);
             console.log("LINKING", user, account, profile);
-            await linkUserEmail(user.id ?? "");
         },
 
         async createUser({ user }) {

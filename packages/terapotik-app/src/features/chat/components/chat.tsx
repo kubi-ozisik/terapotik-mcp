@@ -67,12 +67,26 @@ export function Chat({
       api: '/api/chat',
       fetch: fetchWithErrorHandlers,
       prepareSendMessagesRequest({messages, id, body}) {
+        const mcpAuth = localStorage.getItem('mcp_auth');
+        let mcpToken = null;
+        if (mcpAuth) {
+          try {
+            const parsed = JSON.parse(mcpAuth);
+            if (parsed.isAuthorized && parsed.expiresAt > Date.now()) {
+              mcpToken = parsed.token;
+            }
+          } catch (error) {
+            console.error('Error parsing MCP auth:', error);
+          }
+        }
         return {
           body: {
             id,
             message: messages.at(-1),
             selectedChatModel: initialChatModel,
             selectedVisibilityType: initialVisibilityType,
+            // mcp auth information ??
+            mcpToken,
             ...body,
           }
         }

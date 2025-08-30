@@ -248,7 +248,7 @@ const PurePreviewMessage = ({
                             ) : (
                               <DocumentToolResult
                                 type="update"
-                                result={part.output}
+                                result={part.output as any}
                                 isReadonly={isReadonly}
                               />
                             )
@@ -281,7 +281,7 @@ const PurePreviewMessage = ({
                             ) : (
                               <DocumentToolResult
                                 type="request-suggestions"
-                                result={part.output}
+                                result={part.output as any}
                                 isReadonly={isReadonly}
                               />
                             )

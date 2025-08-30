@@ -1,5 +1,8 @@
 // "use client";
 
+import { MCPAuthButton } from "@/components/mcp-auth-button";
+import Link from "next/link";
+
 // import { AssessmentProgress, AssessmentStatusBadge, useAssessmentState } from "@/lib/assessment-guard";
 // import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 // import { Button } from "@/shared/components/ui/button";
@@ -25,7 +28,9 @@
 // };
 
 const DashboardPage = () => {
-  return <div><a href="/chat">Chat</a></div>;
+  return <div><Link href="/chat">Chat</Link>
+  <MCPAuthButton />
+  </div>;
 };
 
 export default DashboardPage;

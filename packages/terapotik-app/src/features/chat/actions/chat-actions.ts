@@ -79,7 +79,7 @@ export async function getChatsByUserId({
 }) {
   try {
     const extendedLimit = limit + 1;
-    let whereCondition: any = { userId: id };
+    const whereCondition: any = { userId: id };
 
     if (startingAfter) {
       const selectedChat = await prisma.chat.findUnique({
