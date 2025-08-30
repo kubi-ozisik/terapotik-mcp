@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  # Redis for caching and resumable streams
+  redis:
+    image: redis:7-alpine
+    container_name: terapotik-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - smeet-network
+
+  # Redis Commander (Web UI for Redis)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: terapotik-redis-commander
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
+    networks:
+      - terapotik-network
+
+volumes:
+  redis_data:
+    driver: local
+  # postgres_data:
+  #   driver: local
+
+networks:
+  smeet-network:
+    driver: bridge

@@ -583,6 +583,7 @@ export class AuthenticatedMcpServer {
         return null;
     }
 
+
     /**
      * Handle SSE connection with authentication
      * @param req Express Request
