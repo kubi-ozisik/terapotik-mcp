@@ -17,7 +17,7 @@ import {
   UpdateTaskParamsSchema,
 } from "@terapotik/shared";
 import { createAuthenticatedClient } from "../utils/google-auth";
-import { AuthenticatedRequest } from "../services/data-service";
+import { AuthenticatedRequest, getGoogleTokenForUserWithRefresh } from "../services/data-service";
 
 const router = express.Router() as Router;
 
@@ -116,7 +116,7 @@ async function getGoogleTokenForUser(req: AuthenticatedRequest): Promise<GoogleA
 router.get("/lists", async (req: Request, res: Response) => {
   try {
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
+    const tokens = await getGoogleTokenForUserWithRefresh(req as AuthenticatedRequest);
 
     // Validate tokens have required scope
     if (!tokens.scope.includes("https://www.googleapis.com/auth/tasks")) {
@@ -165,7 +165,7 @@ router.get("/all", async (req: Request, res: Response) => {
     }
 
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
+    const tokens = await getGoogleTokenForUserWithRefresh(req as AuthenticatedRequest);
 
     // Validate tokens have required scope
     if (!tokens.scope.includes("https://www.googleapis.com/auth/tasks")) {
