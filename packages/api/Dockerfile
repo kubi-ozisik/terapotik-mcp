@@ -18,15 +18,19 @@ COPY packages/shared/prisma ./packages/shared/prisma
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy source code
-COPY packages/api/src ./packages/api/src
-COPY packages/api/tsconfig.json ./packages/api/
-COPY packages/shared/src ./packages/shared/src
-COPY packages/shared/tsconfig.json ./packages/shared/
+# Generate Prisma client
+RUN pnpm --filter=@terapotik/shared run db:generate 
+
+# Copy entire packages directory
+COPY packages/ ./packages/
 COPY tsconfig.json ./
 
-# Build the application
-RUN pnpm run build --filter=@terapotik/api
+# Copy pre-built shared package
+COPY packages/shared/dist ./packages/shared/dist
+COPY packages/shared/package.json ./packages/shared/
+
+# Build only the API
+RUN pnpm --filter=@terapotik/api run build
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs
