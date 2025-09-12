@@ -25,11 +25,8 @@ RUN pnpm --filter=@terapotik/shared run db:generate
 COPY packages/ ./packages/
 COPY tsconfig.json ./
 
-# Copy pre-built shared package
-COPY packages/shared/dist ./packages/shared/dist
-COPY packages/shared/package.json ./packages/shared/
-
-# Build only the API
+# Build shared package first, then API
+RUN pnpm --filter=@terapotik/shared run build
 RUN pnpm --filter=@terapotik/api run build
 
 # Create non-root user for security
