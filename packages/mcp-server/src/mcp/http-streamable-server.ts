@@ -4,7 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from "crypto";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { getEventsForTodayInputSchema, getEventsForTodayToolInfo } from "../tools/calendar";
+import { getEventsForTodayInputSchema, getEventsForTodayToolInfo, createGetEventsForTodayHandler } from "../tools/calendar";
 import { TerapotikApiClient } from "../services/terapotik-api-client";
 
 interface SessionData {
@@ -321,7 +321,7 @@ export class HttpStreamableServer {
     return apiClient;
   }
   /**
-   * Register the getEventsForToday tool - reusing your existing schema and logic
+   * Register the getEventsForToday tool - using the same handler as authenticated MCP server
    */
   private registerGetEventsForTodayTool(server: McpServer): void {
     server.registerTool(
@@ -329,76 +329,19 @@ export class HttpStreamableServer {
       {
         title: getEventsForTodayToolInfo.name,
         description: getEventsForTodayToolInfo.description,
-        inputSchema: getEventsForTodayInputSchema.shape // Reuse your existing schema
+        inputSchema: getEventsForTodayInputSchema.shape
       },
-      async (params, context) => {
-        try {
-          // Get session data using session ID from context
-          const sessionId = context.sessionId;
-          const sessionData = this.sessions.get(sessionId!);
-
-          if (!sessionData?.authInfo) {
-            return {
-              isError: true,
-              content: [{
-                type: "text",
-                text: `Authentication required. Session ID: ${sessionId} is not authenticated.`
-              }]
-            };
-          }
-
-          // Create API client using the stored auth info
-          // This mimics what authenticateAndGetClient does in your SSE version
-          const apiClient = this.createApiClientFromAuthInfo(sessionData.authInfo);
-
-          // Get today's date in YYYY-MM-DD format (same logic as SSE)
-          const today = new Date();
-          const year = today.getFullYear();
-          const month = String(today.getMonth() + 1).padStart(2, "0");
-          const day = String(today.getDate()).padStart(2, "0");
-          const dateStr = `${year}-${month}-${day}`;
-
-          // Parse parameters (same as SSE)
-          const queryParams = {
-            calendarId: params.calendarId,
-            maxResults: params.maxResults || 100,
-          };
-
-          console.log(`HTTP Streamable: Fetching events for today (${dateStr}) with params:`, queryParams);
-
-          // Fetch events from the API (same call as SSE)
-          const events = await apiClient.getEventsForDate(dateStr, queryParams);
-
-          // Format event data as pretty-printed text (same as SSE)
-          const formattedEventData = JSON.stringify(events, null, 2);
-
-          // Return formatted response (same format as SSE)
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Successfully retrieved ${events.items.length} events for today (${dateStr}) via HTTP Streamable transport.`,
-              },
-              {
-                type: "text",
-                text: formattedEventData,
-              },
-            ],
-          };
-
-        } catch (error) {
-          console.error("Error in HTTP getEventsForToday tool:", error);
-          return {
-            isError: true,
-            content: [
-              {
-                type: "text",
-                text: `Error retrieving events for today: ${error instanceof Error ? error.message : "Unknown error"}`,
-              },
-            ],
-          };
+      createGetEventsForTodayHandler(
+        (sessionId) => {
+          // Get auth info from session data
+          const sessionData = this.sessions.get(sessionId);
+          return sessionData?.authInfo || null;
+        },
+        (clientId) => {
+          // Get client from clients map
+          return this.clients.get(clientId) || null;
         }
-      }
+      )
     );
   }
 
