@@ -25,8 +25,9 @@ COPY packages/shared/src ./packages/shared/src
 COPY packages/shared/tsconfig.json ./packages/shared/
 COPY tsconfig.json ./
 
-# Build the application
-RUN pnpm run build --filter=@terapotik/mcp-server
+# Build shared package first, then MCP server
+RUN pnpm --filter=@terapotik/shared run build
+RUN pnpm --filter=@terapotik/mcp-server run build
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs
