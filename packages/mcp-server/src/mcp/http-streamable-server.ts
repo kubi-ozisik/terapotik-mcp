@@ -408,7 +408,7 @@ export class HttpStreamableServer {
    */
   private cleanupSessions(): void {
     const now = Date.now();
-    const maxAge = 30 * 60 * 1000; // 30 minutes
+    const maxAge = 60 * 60 * 1000 * 24; // 24 hours
 
     for (const [sessionId, sessionData] of this.sessions.entries()) {
       if (now - sessionData.lastAccessed > maxAge) {
