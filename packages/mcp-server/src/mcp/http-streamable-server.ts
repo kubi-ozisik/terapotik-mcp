@@ -429,11 +429,24 @@ export class HttpStreamableServer {
       if (jwtPayload && this.isValidJwtPayload(jwtPayload)) {
         console.log(`Direct JWT validation successful for user: ${jwtPayload.sub}`);
 
+        // Store the client in the clients map (like authenticated MCP server does)
+        const clientId = jwtPayload.sub;
+        const clientData = {
+          client_id: clientId,
+          tokens: {
+            access_token: token,
+            token_type: 'Bearer',
+            expires_in: 3600
+          },
+          userClaims: jwtPayload
+        };
+        this.clients.set(clientId, clientData);
+
         return {
-          clientId: jwtPayload.sub, // Use sub as fallback client ID
+          clientId: clientId,
           userId: jwtPayload.sub,
           token: token,
-          client: null, // No stored client info
+          client: clientData, // Now the client is available
           userClaims: jwtPayload,
           validatedAt: Date.now()
         };
