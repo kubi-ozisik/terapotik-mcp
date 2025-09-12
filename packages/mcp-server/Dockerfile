@@ -33,8 +33,9 @@ RUN pnpm --filter=@terapotik/mcp-server run build
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S mcp -u 1001
 
-# Change ownership of the app directory
-RUN chown -R mcp:nodejs /app
+# Change ownership of only the necessary files
+RUN chown -R mcp:nodejs /app/packages/mcp-server/dist
+RUN chown -R mcp:nodejs /app/packages/shared/dist
 USER mcp
 
 # Expose ports
