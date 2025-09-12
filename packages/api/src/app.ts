@@ -15,9 +15,13 @@ import {
 import googleCalendarRoutes from "./routes/google-calendar-routes";
 import { checkJwt, handleAuthErrors } from "./middlewares/jwt";
 import googleTasksRoutes from "./routes/google-tasks-routes";
+import { validateEnvironmentVariables } from "./utils/env-validation";
 
 // Load environment variables
 dotenv.config();
+
+// Validate required environment variables
+validateEnvironmentVariables();
 
 // Connect to database
 connectDatabase();
