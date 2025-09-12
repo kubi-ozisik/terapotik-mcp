@@ -598,7 +598,7 @@ export class HttpStreamableServer {
     res.header("Pragma", "no-cache");
 
     // Point to our server's endpoints instead of directly to Auth0
-    res.json(this.getOAuthServerMetadata(`http://localhost:${this.port}`));
+    res.json(this.getOAuthServerMetadata(this.baseUrl));  
   }
 
   /**
