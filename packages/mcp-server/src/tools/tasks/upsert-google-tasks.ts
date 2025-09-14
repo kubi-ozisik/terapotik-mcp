@@ -1,6 +1,9 @@
 import { ClientGetter, McpToolHandler, SessionAuthGetter } from "../../types/mcp";
 import { authenticateAndGetClient } from ".";
 import { z } from "zod";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
+import { SessionData } from "../../types";
+import { createTaskListInputSchema } from "./get-google-tasks";
 
 /**
  * Tool name and description for createTask
@@ -447,4 +450,121 @@ export function createDeleteTaskHandler(
             };
         }
     };
+}
+
+export function registerGetTasksForListsTool(server: McpServer,
+    sessions: Map<string, SessionData>,
+    clients: Map<string, any>): void {
+    server.registerTool(
+        createTaskListToolInfo.name,
+        {
+            title: createTaskListToolInfo.name,
+            description: createTaskListToolInfo.description,
+            inputSchema: createTaskListInputSchema.shape
+        },
+        createCreateTaskListHandler(
+            (sessionId) => {
+                // Get auth info from session data
+                const sessionData = sessions.get(sessionId);
+                return sessionData?.authInfo || null;
+            },
+            (clientId) => {
+                // Get client from clients map
+                return clients.get(clientId) || null;
+            }
+        )
+    );
+}
+
+export function registerCreateTaskListTool(server: McpServer,
+    sessions: Map<string, SessionData>,
+    clients: Map<string, any>): void {
+    server.registerTool(
+        createTaskListToolInfo.name,
+        {
+            title: createTaskListToolInfo.name,
+            description: createTaskListToolInfo.description,
+            inputSchema: createTaskListInputSchema.shape
+        },
+        createCreateTaskListHandler(
+            (sessionId) => {
+                // Get auth info from session data
+                const sessionData = sessions.get(sessionId);
+                return sessionData?.authInfo || null;
+            },
+            (clientId) => {
+                // Get client from clients map
+                return clients.get(clientId) || null;
+            }
+        )
+    );
+}
+export function registerCreateTaskTool(server: McpServer,
+    sessions: Map<string, SessionData>,
+    clients: Map<string, any>): void {
+    server.registerTool(
+        createTaskToolInfo.name,
+        {
+            title: createTaskToolInfo.name,
+            description: createTaskToolInfo.description,
+            inputSchema: createTaskInputSchema.shape
+        },
+        createCreateTaskHandler(
+            (sessionId) => {
+                // Get auth info from session data
+                const sessionData = sessions.get(sessionId);
+                return sessionData?.authInfo || null;
+            },
+            (clientId) => {
+                // Get client from clients map
+                return clients.get(clientId) || null;
+            }
+        )
+    );
+}
+export function registerUpdateTaskTool(server: McpServer,
+    sessions: Map<string, SessionData>,
+    clients: Map<string, any>): void {
+    server.registerTool(
+        updateTaskToolInfo.name,
+        {
+            title: updateTaskToolInfo.name,
+            description: updateTaskToolInfo.description,
+            inputSchema: updateTaskInputSchema.shape
+        },
+        createUpdateTaskHandler(
+            (sessionId) => {
+                // Get auth info from session data
+                const sessionData = sessions.get(sessionId);
+                return sessionData?.authInfo || null;
+            },
+            (clientId) => {
+                // Get client from clients map
+                return clients.get(clientId) || null;
+            }
+        )
+    );
+}
+export function registerDeleteTaskTool(server: McpServer,
+    sessions: Map<string, SessionData>,
+    clients: Map<string, any>): void {
+    server.registerTool(
+        deleteTaskToolInfo.name,
+        {
+            title: deleteTaskToolInfo.name,
+            description: deleteTaskToolInfo.description,
+            inputSchema: deleteTaskInputSchema.shape
+        },
+        createDeleteTaskHandler(
+            (sessionId) => {
+                // Get auth info from session data
+                const sessionData = sessions.get(sessionId);
+                return sessionData?.authInfo || null;
+            },
+            (clientId) => {
+                // Get client from clients map
+                return clients.get(clientId) || null;
+            }
+        )
+    );
 }

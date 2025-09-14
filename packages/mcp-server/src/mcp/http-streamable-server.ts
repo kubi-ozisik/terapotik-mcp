@@ -4,21 +4,12 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from "crypto";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { getEventsForTodayInputSchema, getEventsForTodayToolInfo, createGetEventsForTodayHandler } from "../tools/calendar";
+import { registerCalendarTools } from "../tools/calendar";
 import { TerapotikApiClient } from "../services/terapotik-api-client";
+import { SessionData } from "../types";
+import { registerGoogleTaskTools } from "../tools/tasks";
 
-interface SessionData {
-  transport: StreamableHTTPServerTransport;
-  mcpServer: McpServer;
-  createdAt: number;
-  lastAccessed: number;
-  authInfo?: {
-    userId: string;
-    clientId: string;
-    token: string;
-    client: any;
-  };
-}
+
 
 /**
  * HTTP Streamable MCP server - true MCP protocol over HTTP with session management
@@ -197,7 +188,8 @@ export class HttpStreamableServer {
 
         // Register whoami tool
         this.registerWhoamiTool(mcpServer);
-        this.registerGetEventsForTodayTool(mcpServer);
+        registerCalendarTools(mcpServer, this.sessions, this.clients);
+        registerGoogleTaskTools(mcpServer, this.sessions, this.clients);
         // Store session data
         sessionData = {
           transport,
@@ -276,12 +268,12 @@ export class HttpStreamableServer {
             return {
               content: [{
                 type: "text",
-                text: `Session Info:
-    Session ID: ${sessionId}
-    Transport: HTTP Streamable
-    Status: Not authenticated
-    
-    To authenticate, pass Authorization header in future requests.`
+                text: ` Session Info:
+                        Session ID: ${sessionId}
+                        Transport: HTTP Streamable
+                        Status: Not authenticated
+                        
+                        To authenticate, pass Authorization header in future requests.`
               }]
             };
           }
@@ -291,12 +283,12 @@ export class HttpStreamableServer {
           return {
             content: [{
               type: "text",
-              text: `Authenticated User Info:
-    User ID: ${authInfo.userId}
-    Client ID: ${authInfo.clientId}
-    Session ID: ${sessionId}
-    Transport: HTTP Streamable
-    Authenticated: ${new Date().toISOString()}`
+              text: ` Authenticated User Info:
+                      User ID: ${authInfo.userId}
+                      Client ID: ${authInfo.clientId}
+                      Session ID: ${sessionId}
+                      Transport: HTTP Streamable
+                      Authenticated: ${new Date().toISOString()}`
             }]
           };
 
@@ -320,30 +312,8 @@ export class HttpStreamableServer {
 
     return apiClient;
   }
-  /**
-   * Register the getEventsForToday tool - using the same handler as authenticated MCP server
-   */
-  private registerGetEventsForTodayTool(server: McpServer): void {
-    server.registerTool(
-      getEventsForTodayToolInfo.name,
-      {
-        title: getEventsForTodayToolInfo.name,
-        description: getEventsForTodayToolInfo.description,
-        inputSchema: getEventsForTodayInputSchema.shape
-      },
-      createGetEventsForTodayHandler(
-        (sessionId) => {
-          // Get auth info from session data
-          const sessionData = this.sessions.get(sessionId);
-          return sessionData?.authInfo || null;
-        },
-        (clientId) => {
-          // Get client from clients map
-          return this.clients.get(clientId) || null;
-        }
-      )
-    );
-  }
+
+
 
 
   /**

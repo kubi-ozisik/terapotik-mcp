@@ -2,6 +2,8 @@ import { TasksListParamsSchema } from "@terapotik/shared";
 import { z } from "zod";
 import { ClientGetter, McpToolHandler, SessionAuthGetter } from "../../types/mcp";
 import { authenticateAndGetClient } from ".";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
+import { SessionData } from "../../types";
 
 
 
@@ -302,4 +304,74 @@ export function createGetTasksForListHandler(
             };
         }
     };
+}
+
+export function registerGetTasksTool(server: McpServer,
+    sessions: Map<string, SessionData>,
+    clients: Map<string, any>): void {
+    server.registerTool(
+      getTasksToolInfo.name,
+        {
+            title: getTasksToolInfo.name,
+            description: getTasksToolInfo.description,
+            inputSchema: getTasksInputSchema.shape
+        },
+        createGetTasksHandler(
+            (sessionId) => {
+                // Get auth info from session data
+                const sessionData = sessions.get(sessionId);
+                return sessionData?.authInfo || null;
+            },
+            (clientId) => {
+                // Get client from clients map
+                return clients.get(clientId) || null;
+            }
+        )
+    );
+}
+export function registerGetTaskListsTool(server: McpServer,
+    sessions: Map<string, SessionData>,
+    clients: Map<string, any>): void {
+    server.registerTool(
+        getTaskListsToolInfo.name,
+        {
+            title: getTaskListsToolInfo.name,
+            description: getTaskListsToolInfo.description,
+            inputSchema: getTaskListsInputSchema.shape
+        },
+        createGetTaskListsHandler(
+            (sessionId) => {
+                // Get auth info from session data
+                const sessionData = sessions.get(sessionId);
+                return sessionData?.authInfo || null;
+            },
+            (clientId) => {
+                // Get client from clients map
+                return clients.get(clientId) || null;
+            }
+        )
+    );
+}
+export function registerGetTasksForListsTool(server: McpServer,
+    sessions: Map<string, SessionData>,
+    clients: Map<string, any>): void {
+    server.registerTool(
+        getTasksForListToolInfo.name,
+        {
+            title: getTasksForListToolInfo.name,
+            description: getTasksForListToolInfo.description,
+            inputSchema: getTasksForListInputSchema.shape
+        },
+        createGetTasksForListHandler(
+            (sessionId) => {
+                // Get auth info from session data
+                const sessionData = sessions.get(sessionId);
+                return sessionData?.authInfo || null;
+            },
+            (clientId) => {
+                // Get client from clients map
+                return clients.get(clientId) || null;
+            }
+        )
+    );
 }
