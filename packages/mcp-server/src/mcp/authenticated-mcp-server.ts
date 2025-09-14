@@ -6,33 +6,8 @@ import {
     
     registerCalendarTools
 } from "../tools/calendar";
-import {
-    createGetTaskListsHandler,
-    createGetTasksForListHandler,
-    createGetTasksHandler,
-    createTaskListInputSchema,
-    getTaskListsInputSchema,
-    getTaskListsToolInfo,
-    getTasksForListInputSchema,
-    getTasksForListToolInfo,
-    getTasksInputSchema,
-    getTasksToolInfo
-} from "../tools/tasks/get-google-tasks";
-import { 
-    createCreateTaskHandler, 
-    createCreateTaskListHandler, 
-    createDeleteTaskHandler,
-    createTaskInputSchema,
-    createTaskListToolInfo,
-    createTaskToolInfo,
-    createUpdateTaskHandler,
-    deleteTaskInputSchema,
-    deleteTaskToolInfo,
-    updateTaskInputSchema,
-    updateTaskToolInfo,
-} from "../tools/tasks/upsert-google-tasks";
-import { registerGoogleTaskTools } from "../tools/tasks";
 
+import { registerGoogleTaskTools } from "../tools/tasks";
 
 export class AuthenticatedMcpServer {
     // Server name and version for configuration

@@ -1,21 +1,12 @@
 import express, { Express, Request, Response } from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { randomUUID } from "crypto";
 import helmet from "helmet";
 import morgan from "morgan";
-
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-
 import { AuthenticatedMcpServer } from "./authenticated-mcp-server";
-import { UserProfileTool } from "../tools/user-profile-tool";
 
-import { ApiClient } from "../services/api-client";
-import { ApiService } from "../services/api-service";
 
-import { config } from "../config";
 import path from "path";
 
 /**
@@ -195,68 +186,6 @@ export class McpExpressServer {
         // Set up views for the consent page
         this.app.set("view engine", "ejs");
         this.app.set("views", "./src/views");
-    }
-
-    private setupHttpStreamableEndpoint(): void {
-
-        // initialize services
-        const apiClient = new ApiClient(config.api);
-        const apiService = new ApiService(apiClient);
-        const userProfileTool = new UserProfileTool(apiService);
-
-        // MCP endpoint using Streamable HTTP
-        this.app.post('/mcp', async (req, res) => {
-            // Check for existing session ID
-            const sessionId = req.headers['mcp-session-id'] as string | undefined;
-            let transport: StreamableHTTPServerTransport;
-
-            if (sessionId && this.transports[sessionId]) {
-                // Reuse existing transport
-                transport = this.transports[sessionId];
-            } else if (!sessionId && isInitializeRequest(req.body)) {
-                // New initialization request
-                transport = new StreamableHTTPServerTransport({
-                    sessionIdGenerator: () => randomUUID(),
-                    onsessioninitialized: (sessionId) => {
-                        // Store the transport by session ID
-                        this.transports[sessionId] = transport;
-                    },
-                });
-
-                // Clean up transport when closed
-                transport.onclose = () => {
-                    if (transport.sessionId) {
-                        delete this.transports[transport.sessionId];
-                    }
-                };
-
-                // Create MCP server for this session
-                const server = new McpServer({
-                    name: config.server.name,
-                    version: config.server.version,
-                });
-
-                // Register tools
-                userProfileTool.register(server);
-
-                // Connect to the MCP server
-                await server.connect(transport);
-            } else {
-                // Invalid request
-                res.status(400).json({
-                    jsonrpc: '2.0',
-                    error: {
-                        code: -32000,
-                        message: 'Bad Request: No valid session ID provided',
-                    },
-                    id: null,
-                });
-                return;
-            }
-
-            // Handle the request
-            await transport.handleRequest(req, res, req.body);
-        });
     }
 
     /**
