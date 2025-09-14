@@ -16,3 +16,9 @@ if (!process.env.AZURE_STORAGE_CONNECTION_STRING) {
   console.warn('   Please set it in your .env file or as an environment variable.');
   console.warn('   Example: AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=...');
 }
+
+if (!process.env.AZURE_COSMOS_CONNECTION_STRING) {
+  console.warn('⚠️  AZURE_COSMOS_CONNECTION_STRING not found in environment variables.');
+  console.warn('   Please set it in your .env file or as an environment variable.');
+  console.warn('   Example: AZURE_COSMOS_CONNECTION_STRING="mongodb+srv://...');
+}

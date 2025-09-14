@@ -207,7 +207,7 @@ import {
         };
   
       } catch (error) {
-        console.error('Error saving artifact:', error);
+        // console.error('Error saving artifact:', error);
         return {
           success: false,
           error: `Failed to save artifact: ${error instanceof Error ? error.message : 'Unknown error'}`

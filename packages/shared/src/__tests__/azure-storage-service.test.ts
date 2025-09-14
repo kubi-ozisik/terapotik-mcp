@@ -55,7 +55,7 @@ describe('AzureStorageService', () => {
             console.log('Save result:', JSON.stringify(result, null, 2));
 
             if (!result.success) {
-                console.error('Save failed:', result.error);
+                // console.error('Save failed:', result.error);
                 throw new Error(`Save failed: ${result.error}`);
             }
 
@@ -79,7 +79,7 @@ describe('AzureStorageService', () => {
             console.log('List result:', JSON.stringify(listResult, null, 2));
 
             if (!listResult.success) {
-                console.error('List failed:', listResult.error);
+                // console.error('List failed:', listResult.error);
                 throw new Error(`List failed: ${listResult.error}`);
             }
 
