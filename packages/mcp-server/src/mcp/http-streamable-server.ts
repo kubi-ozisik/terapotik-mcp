@@ -8,6 +8,8 @@ import { registerCalendarTools } from "../tools/calendar";
 import { SessionData } from "../types";
 import { registerGoogleTaskTools } from "../tools/tasks";
 import { Auth0Provider } from "../auth/providers/auth0-provider";
+import { registerAzureStorageTools } from "../tools/azure/storage-tools";
+import { registerAzureCosmosTools } from "../tools/azure/cosmos-db-tools";
 
 /**
  * HTTP Streamable MCP server - true MCP protocol over HTTP with session management
@@ -157,6 +159,8 @@ export class HttpStreamableServer extends Auth0Provider {
         this.registerWhoamiTool(mcpServer);
         registerCalendarTools(mcpServer, this.sessions, this.clients);
         registerGoogleTaskTools(mcpServer, this.sessions, this.clients);
+        registerAzureStorageTools(mcpServer, this.sessions, this.clients);
+        registerAzureCosmosTools(mcpServer, this.sessions, this.clients);
         // Store session data
         sessionData = {
           transport,

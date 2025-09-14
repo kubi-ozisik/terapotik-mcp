@@ -24,23 +24,23 @@ describe.only('AzureCosmosService', () => {
     afterAll(async () => {
         // Clean up test data
         try {
-            // if (service.isServiceConnected()) {
-            //     // Delete all test documents
-            //     await service.queryDocuments({
-            //         collection: testCollection,
-            //         filter: { userId: testUserId }
-            //     }).then(async (result) => {
-            //         if (result.success && result.data) {
-            //             for (const doc of result.data) {
-            //                 await service.deleteDocument({
-            //                     collection: testCollection,
-            //                     id: doc._id,
-            //                     userId: testUserId
-            //                 });
-            //             }
-            //         }
-            //     });
-            // }
+            if (service.isServiceConnected()) {
+                // Delete all test documents
+                await service.queryDocuments({
+                    collection: testCollection,
+                    filter: { userId: testUserId }
+                }).then(async (result) => {
+                    if (result.success && result.data) {
+                        for (const doc of result.data) {
+                            await service.deleteDocument({
+                                collection: testCollection,
+                                id: doc._id,
+                                userId: testUserId
+                            });
+                        }
+                    }
+                });
+            }
         } catch (error) {
             console.warn('Cleanup warning:', error);
         }
