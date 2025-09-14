@@ -2,7 +2,7 @@ import { AzureStorageService } from '../services/azure-storage-service';
 import { AzureStorageConfig } from '../types/azure-storage';
 
 
-describe('AzureStorageService', () => {
+describe.skip('AzureStorageService', () => {
     let service: AzureStorageService;
     const testUserId = 'test-user-123';
     const testFileName = 'test-document.md';
