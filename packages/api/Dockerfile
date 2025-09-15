@@ -33,8 +33,8 @@ RUN pnpm --filter=@terapotik/api run build
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S api -u 1001
 
-# Change ownership of the app directory
-RUN chown -R api:nodejs /app
+# Change ownership of only the necessary files
+RUN chown -R api:nodejs /app/packages/api/dist
 USER api
 
 # Expose port
