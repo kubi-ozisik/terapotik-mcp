@@ -1,4 +1,5 @@
-// Type declarations for Auth0 OIDC consent app
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 // Define JWTPayload interface to replace the one from jose
 export interface JWTPayload {
@@ -54,4 +55,17 @@ export interface Env {
   AUTH0_CLIENT_ID?: string;
   AUTH0_CLIENT_SECRET?: string;
   BASE_URL?: string;
+}
+
+export interface SessionData {
+  transport: StreamableHTTPServerTransport;
+  mcpServer: McpServer;
+  createdAt: number;
+  lastAccessed: number;
+  authInfo?: {
+    userId: string;
+    clientId: string;
+    token: string;
+    client: any;
+  };
 }

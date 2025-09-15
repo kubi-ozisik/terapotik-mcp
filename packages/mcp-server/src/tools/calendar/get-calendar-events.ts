@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { authenticateAndGetClient } from ".";
 import { ClientGetter, McpToolHandler, SessionAuthGetter } from "../../types/mcp";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
+import { SessionData } from "../../types";
 
 /**
  * Tool name and description for getCalendarEvents
@@ -373,3 +375,298 @@ export function createGetEventsForDateRangeHandler(
     };
 }
 
+/**
+ * Tool name and description for getEventsForToday
+ */
+export const getEventsForTodayToolInfo = {
+    name: "getEventsForToday",
+    description:
+        "Fetch calendar events for today from Google Calendar. This returns all events scheduled for the current day. You can optionally specify a calendar ID if you want to fetch events from a calendar other than the primary one.",
+};
+
+
+/**
+ * Input schema for the getEventsForToday tool
+ */
+export const getEventsForTodayInputSchema = z.object({
+    calendarId: z
+        .string()
+        .optional()
+        .describe("Calendar ID (defaults to primary calendar)"),
+    maxResults: z
+        .number()
+        .positive()
+        .optional()
+        .describe("Maximum number of events to return"),
+});
+
+/**
+ * Creates a handler function for the getEventsForToday MCP tool
+ * @param sessionAuthGetter Function to get auth info from a session ID
+ * @param clientGetter Function to get client info from a client ID
+ * @returns An MCP tool handler function
+ */
+export function createGetEventsForTodayHandler(
+    sessionAuthGetter: SessionAuthGetter,
+    clientGetter: ClientGetter
+): McpToolHandler {
+    return async (params: any, context: any) => {
+        try {
+            // Authenticate and get API client
+            const auth = await authenticateAndGetClient(
+                context,
+                sessionAuthGetter,
+                clientGetter
+            );
+
+            if (!auth.success) {
+                return auth.errorResponse;
+            }
+
+            const apiClient = auth.apiClient!;
+
+            // Get today's date in YYYY-MM-DD format
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, "0");
+            const day = String(today.getDate()).padStart(2, "0");
+            const dateStr = `${year}-${month}-${day}`;
+
+            // Parse parameters
+            const queryParams = {
+                calendarId: params.calendarId,
+                maxResults: params.maxResults || 100,
+            };
+
+            // Fetch events for today from the API
+            console.log(
+                `Fetching events for today (${dateStr}) with params:`,
+                queryParams
+            );
+            const events = await apiClient.getEventsForDate(dateStr, queryParams);
+
+            // Format event data as pretty-printed text
+            const formattedEventData = JSON.stringify(events, null, 2);
+
+            // Return formatted response
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Successfully retrieved ${events.items.length} events for today (${dateStr}).`,
+                    },
+                    {
+                        type: "text",
+                        text: formattedEventData,
+                    },
+                ],
+            };
+        } catch (error) {
+            console.error("Error in getEventsForToday tool:", error);
+            return {
+                isError: true,
+                content: [
+                    {
+                        type: "text",
+                        text: `Error retrieving events for today: ${error instanceof Error ? error.message : "Unknown error"
+                            }`,
+                    },
+                ],
+            };
+        }
+    };
+}
+
+/**
+ * Creates a handler function for the getCalendarEvents MCP tool
+ * @param sessionAuthGetter Function to get auth info from a session ID
+ * @param clientGetter Function to get client info from a client ID
+ * @returns An MCP tool handler function
+ */
+export function createGetCalendarEventsHandler(
+    sessionAuthGetter: SessionAuthGetter,
+    clientGetter: ClientGetter
+): McpToolHandler {
+    return async (params: any, context: any) => {
+        try {
+            // Authenticate and get API client
+            const auth = await authenticateAndGetClient(
+                context,
+                sessionAuthGetter,
+                clientGetter
+            );
+
+            if (!auth.success) {
+                return auth.errorResponse;
+            }
+
+            const apiClient = auth.apiClient!;
+
+            // Parse parameters
+            const eventsParams = {
+                calendarId: params.calendarId,
+                timeMin: params.timeMin,
+                timeMax: params.timeMax,
+                maxResults: params.maxResults,
+                singleEvents:
+                    params.singleEvents !== undefined ? params.singleEvents : true,
+                orderBy: params.orderBy || "startTime",
+            };
+
+            // Fetch events from the API
+            console.log("Calling API with params:", eventsParams);
+            const events = await apiClient.getCalendarEvents(eventsParams);
+
+            // Format event data as pretty-printed text
+            const formattedEventData = JSON.stringify(events, null, 2);
+
+            // Return formatted response
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Successfully retrieved ${events.items.length} events.`,
+                    },
+                    {
+                        type: "text",
+                        text: formattedEventData,
+                    },
+                ],
+            };
+        } catch (error) {
+            console.error("Error in getCalendarEvents tool:", error);
+            return {
+                isError: true,
+                content: [
+                    {
+                        type: "text",
+                        text: `Error retrieving calendar events: ${error instanceof Error ? error.message : "Unknown error"
+                            }`,
+                    },
+                ],
+            };
+        }
+    };
+}
+
+/**
+* Register the getEventsForToday tool - using the same handler as authenticated MCP server
+*/
+export function registerGetEventsForTodayTool(server: McpServer,
+    sessions: Map<string, SessionData>,
+    clients: Map<string, any>): void {
+    server.registerTool(
+        getEventsForTodayToolInfo.name,
+        {
+            title: getEventsForTodayToolInfo.name,
+            description: getEventsForTodayToolInfo.description,
+            inputSchema: getEventsForTodayInputSchema.shape
+        },
+        createGetEventsForTodayHandler(
+            (sessionId) => {
+                // Get auth info from session data
+                const sessionData = sessions.get(sessionId);
+                return sessionData?.authInfo || sessionData || null;
+            },
+            (clientId) => {
+                // Get client from clients map
+                return clients.get(clientId) || null;
+            }
+        )
+    );
+}
+
+export function registerGetCalendarListTool(server: McpServer,
+    sessions: Map<string, SessionData>,
+    clients: Map<string, any>): void {
+    server.registerTool(
+        getCalendarListToolInfo.name,
+        {
+            title: getCalendarListToolInfo.name,
+            description: getCalendarListToolInfo.description,
+            inputSchema: getCalendarListInputSchema.shape
+        },
+        createGetCalendarListHandler(
+            (sessionId) => {
+                // Get auth info from session data
+                const sessionData = sessions.get(sessionId);
+                return sessionData?.authInfo || sessionData || null;
+            },
+            (clientId) => {
+                // Get client from clients map
+                return clients.get(clientId) || null;
+            }
+        )
+    );
+}
+
+export function registerGetCalendarEventsTool(server: McpServer,
+    sessions: Map<string, SessionData>,
+    clients: Map<string, any>): void {
+    server.registerTool(
+        getCalendarEventsToolInfo.name,
+        {
+            title: getCalendarEventsToolInfo.name,
+            description: getCalendarEventsToolInfo.description,
+            inputSchema: getCalendarEventsInputSchema.shape
+        },
+        createGetCalendarEventsHandler(
+            (sessionId) => {
+                // Get auth info from session data
+                const sessionData = sessions.get(sessionId);
+                return sessionData?.authInfo || null;
+            },
+            (clientId) => {
+                // Get client from clients map
+                return clients.get(clientId) || null;
+            }
+        )
+    );
+}
+export function registerGetEventsForDateTool(server: McpServer,
+    sessions: Map<string, SessionData>,
+    clients: Map<string, any>): void {
+    server.registerTool(
+        getEventsForDateToolInfo.name,
+        {
+            title: getEventsForDateToolInfo.name,
+            description: getEventsForDateToolInfo.description,
+            inputSchema: getEventsForDateInputSchema.shape
+        },
+        createGetEventsForDateHandler(
+            (sessionId) => {
+                // Get auth info from session data
+                const sessionData = sessions.get(sessionId);
+                return sessionData?.authInfo || null;
+            },
+            (clientId) => {
+                // Get client from clients map
+                return clients.get(clientId) || null;
+            }
+        )
+    );
+}
+
+export function registerGetEventsForDateRangeTool(server: McpServer,
+    sessions: Map<string, SessionData>,
+    clients: Map<string, any>): void {
+    server.registerTool(
+        getEventsForDateRangeToolInfo.name,
+        {
+            title: getEventsForDateRangeToolInfo.name,
+            description: getEventsForDateRangeToolInfo.description,
+            inputSchema: getEventsForDateRangeInputSchema.shape
+        },
+        createGetEventsForDateRangeHandler(
+            (sessionId) => {
+                // Get auth info from session data
+                const sessionData = sessions.get(sessionId);
+                return sessionData?.authInfo || null;
+            },
+            (clientId) => {
+                // Get client from clients map
+                return clients.get(clientId) || null;
+            }
+        )
+    );
+}
