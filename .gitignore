@@ -140,3 +140,4 @@ vite.config.ts.timestamp-*
 docker-compose.yml
 env.example
 .env
+docker-compose-prod.yml
