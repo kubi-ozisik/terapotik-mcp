@@ -223,6 +223,7 @@ export async function POST(request: Request) {
       return new Response(stream.pipeThrough(new JsonToSseTransformStream()));
     }
   } catch (error) {
+    console.error('Error in chat stream:', error);
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }

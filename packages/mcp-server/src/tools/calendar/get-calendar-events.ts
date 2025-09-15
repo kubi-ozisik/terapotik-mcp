@@ -566,7 +566,7 @@ export function registerGetEventsForTodayTool(server: McpServer,
             (sessionId) => {
                 // Get auth info from session data
                 const sessionData = sessions.get(sessionId);
-                return sessionData?.authInfo || null;
+                return sessionData?.authInfo || sessionData || null;
             },
             (clientId) => {
                 // Get client from clients map
@@ -590,7 +590,7 @@ export function registerGetCalendarListTool(server: McpServer,
             (sessionId) => {
                 // Get auth info from session data
                 const sessionData = sessions.get(sessionId);
-                return sessionData?.authInfo || null;
+                return sessionData?.authInfo || sessionData || null;
             },
             (clientId) => {
                 // Get client from clients map
