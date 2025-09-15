@@ -1,6 +1,8 @@
 import z from "zod";
 import { ClientGetter, McpToolHandler, SessionAuthGetter } from "../../types/mcp";
 import { authenticateAndGetClient } from ".";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
+import { SessionData } from "../../types";
 
 /**
  * Tool name and description for createCalendarEvent
@@ -382,3 +384,50 @@ export function createCreateRecurringEventHandler(
       }
     };
   }
+
+  export function registerCreateCalendarEventTool(server: McpServer,
+    sessions: Map<string, SessionData>,
+    clients: Map<string, any>): void {
+    server.registerTool(
+      createCalendarEventToolInfo.name,
+        {
+            title: createCalendarEventToolInfo.name,
+            description: createCalendarEventToolInfo.description,
+            inputSchema: createCalendarEventInputSchema.shape
+        },
+        createCreateCalendarEventHandler(
+            (sessionId) => {
+                // Get auth info from session data
+                const sessionData = sessions.get(sessionId);
+                return sessionData?.authInfo || null;
+            },
+            (clientId) => {
+                // Get client from clients map
+                return clients.get(clientId) || null;
+            }
+        )
+    );
+}
+export function registerCreateRecurringEventTool(server: McpServer,
+  sessions: Map<string, SessionData>,
+  clients: Map<string, any>): void {
+  server.registerTool(
+    createRecurringEventToolInfo.name,
+      {
+          title: createRecurringEventToolInfo.name,
+          description: createRecurringEventToolInfo.description,
+          inputSchema: createRecurringEventInputSchema.shape
+      },
+      createCreateRecurringEventHandler(
+          (sessionId) => {
+              // Get auth info from session data
+              const sessionData = sessions.get(sessionId);
+              return sessionData?.authInfo || null;
+          },
+          (clientId) => {
+              // Get client from clients map
+              return clients.get(clientId) || null;
+          }
+      )
+  );
+}

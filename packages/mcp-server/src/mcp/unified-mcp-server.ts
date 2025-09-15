@@ -62,18 +62,6 @@ export class UnifiedMcpServer {
       handler
     });
 
-    // Register on existing servers if they're already initialized
-    if (this.httpServer) {
-      this.httpServer.addTool(name, {
-        title: name,
-        description,
-        inputSchema: schema,
-      }, async (args) => {
-        // Adapt the handler to match HttpStreamableServer's expected signature
-        return handler(args, { transportType: 'http' });
-      });
-    }
-
     // Note: SSE server tools are registered differently via AuthenticatedMcpServer
     // This would need to be handled in the SSE server initialization
   }
@@ -103,9 +91,6 @@ export class UnifiedMcpServer {
     return this.sseServer;
   }
 
-  /**
-   * Initialize HTTP streamable server
-   */
   public initializeHTTPServer(): HttpStreamableServer | undefined {
     if (!this.config.enableHTTP) return undefined;
 
@@ -115,19 +100,6 @@ export class UnifiedMcpServer {
         this.config.version,
         this.config.httpPort!
       );
-
-      // Register all existing tools
-      for (const tool of this.tools.values()) {
-        this.httpServer.addTool(tool.name, {
-          title: tool.name,
-          description: tool.description,
-          inputSchema: tool.schema,
-        }, async (args) => {
-          // Adapt the handler to match HttpStreamableServer's expected signature
-          return tool.handler(args, { transportType: 'http' });
-        });
-      }
-
       process.stderr.write(`HTTP streamable server initialized on port ${this.config.httpPort}\n`);
     }
     return this.httpServer;

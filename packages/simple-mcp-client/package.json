@@ -1,0 +1,30 @@
+{
+  "name": "@terapotik/mcp-client",
+  "version": "1.0.0",
+  "description": "HTTP client for testing MCP server OAuth flow",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "test": "tsx src/index.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@types/eventsource": "^3.0.0",
+    "@types/node": "^20.0.0",
+    "eventsource": "^2.0.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "oauth",
+    "client",
+    "test"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

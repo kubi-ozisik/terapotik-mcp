@@ -38,11 +38,7 @@ async function main() {
   // Register tools
   // this part will be refactored as there is a need for generic
   // tool registration across all transports
-  const httpServer = unifiedServer.getHTTPServer();
-  if (httpServer) {
-    console.log("registering tool to http server");
-    userProfileTool.register(httpServer.getMcpServer());
-  }
+  // const httpServer = unifiedServer.getHTTPServer();
   console.log('\n🎉 Unified MCP Server started successfully!');
   console.log('📊 Server Status:', JSON.stringify(unifiedServer.getStatus(), null, 2));
   console.log('\n🔗 Available endpoints:');

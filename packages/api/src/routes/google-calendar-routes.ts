@@ -1,6 +1,6 @@
 // 
 import express, { Request, Response, Router } from "express";
-import { AuthenticatedRequest, getGoogleTokenForUser, getGoogleTokenForUserWithRefresh } from "../services/data-service";
+import { AuthenticatedRequest, getGoogleTokenForUserWithRefresh } from "../services/data-service";
 import { GoogleCalendarService } from "../services/google-calendar-service";
 import { CalendarEvent, CalendarEventsRequest } from "@terapotik/shared/types";
 import { createAuthenticatedClient, createAuthenticatedClientWithRefresh } from "../utils/google-auth";
@@ -18,7 +18,7 @@ const router = express.Router() as Router;
 router.get("/events", async (req: Request, res: Response) => {
   try {
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
+    const tokens = await getGoogleTokenForUserWithRefresh(req as AuthenticatedRequest);
 
     // Create authenticated client
     const authClient = createAuthenticatedClient(tokens);
@@ -63,7 +63,7 @@ router.post("/events", async (req: Request, res: Response) => {
     const validatedData = CreateCalendarEventRequestSchema.parse(req.body);
 
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
+    const tokens = await getGoogleTokenForUserWithRefresh(req as AuthenticatedRequest);
 
     // Create authenticated client
     const authClient = createAuthenticatedClient(tokens);
@@ -186,7 +186,7 @@ router.post("/events", async (req: Request, res: Response) => {
 router.get("/list", async (req: Request, res: Response) => {
   try {
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
+    const tokens = await getGoogleTokenForUserWithRefresh(req as AuthenticatedRequest);
 
     // Create authenticated client
     const authClient = createAuthenticatedClient(tokens);
@@ -215,7 +215,7 @@ router.get("/list", async (req: Request, res: Response) => {
 router.get("/events/date/:date", async (req: Request, res: Response) => {
   try {
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
+    const tokens = await getGoogleTokenForUserWithRefresh(req as AuthenticatedRequest);
 
     // Create authenticated client
     const authClient = createAuthenticatedClient(tokens);
@@ -272,7 +272,7 @@ router.get("/events/date/:date", async (req: Request, res: Response) => {
 router.get("/events/range", async (req: Request, res: Response) => {
   try {
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
+    const tokens = await getGoogleTokenForUserWithRefresh(req as AuthenticatedRequest);
 
     // Create authenticated client
     const authClient = createAuthenticatedClient(tokens);
@@ -344,7 +344,7 @@ router.get("/events/range", async (req: Request, res: Response) => {
 router.post("/events/recurring", async (req: Request, res: Response) => {
   try {
     // Get the user's Google tokens from ServiceToken collection
-    const tokens = await getGoogleTokenForUser(req as AuthenticatedRequest);
+    const tokens = await getGoogleTokenForUserWithRefresh(req as AuthenticatedRequest);
 
     // Create authenticated client
     const authClient = createAuthenticatedClient(tokens);

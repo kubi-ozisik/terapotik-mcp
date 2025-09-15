@@ -1,0 +1,14 @@
+curl -X POST "https://smeetapp.eu.auth0.com/oauth/token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "S7ienbLLZy9wBFPjgqKHCsQoXBSaqjhv",
+    "client_secret": "owW88ujy8ugGg27NCprI_fN7dbg5lcQdL1vS1aCiPWz4MnyRHV7IlNej3nCYUPGi",
+    "audience": "urn:terapotik-api",
+    "grant_type": "client_credentials"
+  }'
+
+curl -X GET "http://localhost:3200/api/calendar/events" \
+  -H "Authorization: Bearer $BEARER_TOKEN" \
+  -H "Content-Type: application/json"
+
+eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InNpbUUyNUJrcGUyc1B0eEVWMFdrOCJ9.eyJodHRwczovL3NtZWV0YXBwL3JvbGVzIjpbXSwiaXNzIjoiaHR0cHM6Ly9zbWVldGFwcC5ldS5hdXRoMC5jb20vIiwic3ViIjoiZ29vZ2xlLW9hdXRoMnwxMTIwNjIwNzE3NzIxMzY5MDQ4OTciLCJhdWQiOlsidXJuOnRlcmFwb3Rpay1hcGkiLCJodHRwczovL3NtZWV0YXBwLmV1LmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE3NTYxNDg4OTMsImV4cCI6MTc1NjIzNTI5Mywic2NvcGUiOiJvcGVuaWQgcHJvZmlsZSBlbWFpbCBvZmZsaW5lX2FjY2VzcyIsImF6cCI6IlM3aWVuYkxMWnk5d0JGUGpncUtIQ3NRb1hCU2Fxamh2In0.T-vJKxLSzO1oOUhAQTa3sJnHahz56X_JidjkFe4tkCcyCy_pzrJ7thRAQNyb1Xof0lPP-3GCKConwBRuKr9nQFTfbtYEoI6-j1wkukXcE7y0nQLR92ZPearDPkcA_Lmk2RL1rtMNexiPE07SN-Oy0MHUFqbebBD6VbyDkFGTAK3SLoj8CTFI_e6-LrlSEDtFX2Fezix6QeSc2xj5vX0lf0ZYOrCihA2OH_JpJiA7Ey0kbfJ6yqtS7Si7ivEL0XKiBqysHqGa1GDe8kYf7rCHER9CC9da90bbAWGdWZbihN-brn5qGZdWWpPPF9fYdBZGOlNYgd7LBQm6pG-JHTBjjA
