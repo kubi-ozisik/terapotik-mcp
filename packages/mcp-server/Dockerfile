@@ -23,7 +23,6 @@ COPY packages/mcp-server/src ./packages/mcp-server/src
 COPY packages/mcp-server/tsconfig.json ./packages/mcp-server/
 COPY packages/shared/src ./packages/shared/src
 COPY packages/shared/tsconfig.json ./packages/shared/
-COPY packages/shared/services.ts ./packages/shared/
 COPY tsconfig.json ./
 
 # Build shared package first, then MCP server

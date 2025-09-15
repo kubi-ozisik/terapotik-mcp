@@ -1,5 +1,6 @@
 import { SessionAuthGetter } from "../types/mcp";
-import { AzureStorageService, AzureStorageConfig } from "@terapotik/shared/services";
+import { AzureStorageService } from "@terapotik/shared/dist/services";
+import { AzureStorageConfig } from "@terapotik/shared/dist/types/azure-storage";
 
 /**
  * Helper function to get session auth info from context

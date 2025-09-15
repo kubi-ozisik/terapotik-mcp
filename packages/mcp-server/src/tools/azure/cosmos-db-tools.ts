@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 
 import { SessionData } from '../../types';
-import { AzureCosmosService, AzureCosmosConfig } from '@terapotik/shared/services';
+import { AzureCosmosService } from '@terapotik/shared/dist/services';
+import { AzureCosmosConfig } from '@terapotik/shared/dist/types/azure-cosmos';
 import { getSessionAuth } from '../auth-helper';
 import { SessionAuthGetter, ClientGetter } from "../../types/mcp";
 
